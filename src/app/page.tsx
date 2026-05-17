@@ -20,30 +20,39 @@ import { useAuth } from "@/context/AuthContext";
 const TATAI_MODELS = [
   {
     id: "tatai-flash",
-    name: "tataI Flash",
-    desc: "Quick responses",
+    name: "Zara",
+    fullName: "tataI Zara",
+    desc: "Lightning fast answers",
     apiModel: "gpt-4o-mini",
     icon: ZapIcon,
-    color: "text-yellow-500",
+    color: "text-amber-500",
+    bg: "bg-amber-50 dark:bg-amber-400/10",
     badge: "Fast",
+    proOnly: false,
   },
   {
     id: "tatai-smart",
-    name: "tataI Smart",
+    name: "Nova",
+    fullName: "tataI Nova",
     desc: "Best for most tasks",
     apiModel: "gpt-4o",
     icon: Sparkles,
     color: "text-blue-500",
+    bg: "bg-blue-50 dark:bg-blue-400/10",
     badge: "Default",
+    proOnly: false,
   },
   {
     id: "tatai-think",
-    name: "tataI Think",
-    desc: "Deep reasoning",
+    name: "Orion",
+    fullName: "tataI Orion",
+    desc: "Deep reasoning & analysis",
     apiModel: "o4-mini",
     icon: Brain,
     color: "text-violet-500",
+    bg: "bg-violet-50 dark:bg-violet-400/10",
     badge: "Pro",
+    proOnly: true,
   },
 ] as const;
 
@@ -139,6 +148,18 @@ function MessageContent({ content }: { content: string }) {
 export default function Home() {
   const router = useRouter();
   const { user, logout, setShowLogin } = useAuth();
+  const [isPro, setIsPro] = useState(false);
+
+  // Check Pro status from Supabase when user logs in
+  useEffect(() => {
+    if (!user) { setIsPro(false); return; }
+    user.getIdToken().then(token => {
+      fetch("/api/user", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => { if (data?.plan === "pro") setIsPro(true); })
+        .catch(() => {});
+    });
+  }, [user]);
   const [input, setInput] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -189,7 +210,11 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
-  const activeModelDef = TATAI_MODELS.find(m => m.id === selectedModel) ?? TATAI_MODELS[1];
+  // If selected model is Pro-only but user isn't Pro, fall back to Nova
+  const effectiveModel = (TATAI_MODELS.find(m => m.id === selectedModel)?.proOnly && !isPro)
+    ? "tatai-smart"
+    : selectedModel;
+  const activeModelDef = TATAI_MODELS.find(m => m.id === effectiveModel) ?? TATAI_MODELS[1];
 
   // Always return a human-friendly name (never raw email)
   function getDisplayName(u: typeof user) {
@@ -832,8 +857,8 @@ export default function Home() {
                       className="flex items-center gap-1.5 pl-2 sm:pl-2.5 pr-1.5 sm:pr-2 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-700 dark:hover:text-white transition-colors active:scale-95"
                     >
                       <activeModelDef.icon className={`w-3.5 h-3.5 flex-shrink-0 ${activeModelDef.color}`} />
-                      <span className="hidden sm:inline">{activeModelDef.name}</span>
-                      <span className="sm:hidden">{activeModelDef.name.replace("tataI ", "")}</span>
+                      <span className="hidden sm:inline">{activeModelDef.fullName}</span>
+                      <span className="sm:hidden">{activeModelDef.name}</span>
                       <ChevronDown className="w-3 h-3 opacity-50" />
                     </button>
 
@@ -847,31 +872,39 @@ export default function Home() {
                           {TATAI_MODELS.map((m) => {
                             const Icon = m.icon;
                             const isActive = m.id === selectedModel;
+                            const locked = m.proOnly && !isPro;
                             return (
                               <button
                                 key={m.id}
-                                onClick={() => { setSelectedModel(m.id); setModelDropOpen(false); }}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left hover:bg-neutral-50 dark:hover:bg-white/[0.05] ${isActive ? "bg-neutral-50 dark:bg-white/[0.04]" : ""}`}
+                                onClick={() => {
+                                  if (locked) { setModelDropOpen(false); router.push("/upgrade"); return; }
+                                  setSelectedModel(m.id); setModelDropOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left ${
+                                  locked
+                                    ? "opacity-60 cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-400/5"
+                                    : `hover:bg-neutral-50 dark:hover:bg-white/[0.05] ${isActive ? "bg-neutral-50 dark:bg-white/[0.04]" : ""}`
+                                }`}
                               >
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                  m.id === "tatai-flash" ? "bg-yellow-50 dark:bg-yellow-400/10" :
-                                  m.id === "tatai-smart" ? "bg-blue-50 dark:bg-blue-400/10" :
-                                  "bg-violet-50 dark:bg-violet-400/10"
-                                }`}>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${m.bg}`}>
                                   <Icon className={`w-3.5 h-3.5 ${m.color}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5">
-                                    <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{m.name}</p>
+                                    <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{m.fullName}</p>
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                                      m.badge === "Fast" ? "bg-yellow-100 dark:bg-yellow-400/10 text-yellow-600 dark:text-yellow-400" :
+                                      m.badge === "Fast" ? "bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400" :
                                       m.badge === "Default" ? "bg-blue-100 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400" :
                                       "bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400"
                                     }`}>{m.badge}</span>
                                   </div>
                                   <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{m.desc}</p>
                                 </div>
-                                {isActive && <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
+                                {locked ? (
+                                  <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                ) : isActive ? (
+                                  <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                ) : null}
                               </button>
                             );
                           })}
