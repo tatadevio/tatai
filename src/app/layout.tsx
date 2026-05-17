@@ -88,15 +88,17 @@ export const metadata: Metadata = {
   applicationName: APP_NAME,
   category: "technology",
 
-  // Icons (Next.js auto-picks icon.svg / apple-icon.svg from /app)
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/apple-icon.svg", type: "image/svg+xml" },
+      { url: "/apple-icon.svg", sizes: "180x180", type: "image/svg+xml" },
     ],
     shortcut: "/icon.svg",
+    other: [
+      { rel: "apple-touch-icon", url: "/apple-icon.svg" },
+    ],
   },
 
   manifest: "/manifest.webmanifest",
