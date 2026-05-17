@@ -402,72 +402,78 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Bottom — collapsible menu + user */}
-        <div className="border-t border-neutral-200 dark:border-white/[0.06]">
-          {/* Expandable menu items */}
-          {menuOpen && (
-            <div className="px-2 pt-2">
-              {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
-                <button
-                  key={label}
-                  onClick={() => router.push(href)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left"
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                </button>
-              ))}
-              {!user && (
-                <button
-                  onClick={() => router.push("/upgrade")}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
-                >
-                  <Crown className="w-3.5 h-3.5" />
-                  Upgrade to Pro
-                </button>
-              )}
-              {user && (
-                <button
-                  onClick={() => { logout(); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors text-left"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Sign out
-                </button>
-              )}
-              <div className="h-1" />
-            </div>
-          )}
+        {/* ── Bottom section ── */}
+        <div className="border-t border-neutral-200 dark:border-white/[0.06] pt-1.5 pb-1">
 
-          {/* User row with arrow toggle */}
-          {user ? (
+          {/* These links are ALWAYS visible, logged in or not */}
+          <div className="px-2">
+            {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
+              <button
+                key={label}
+                onClick={() => { router.push(href); closeSidebarOnMobile(); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left"
+              >
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                {label}
+              </button>
+            ))}
             <button
-              onClick={() => setMenuOpen((v) => !v)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+              onClick={() => { router.push("/upgrade"); closeSidebarOnMobile(); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
             >
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full flex-shrink-0 object-cover" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-[13px] font-semibold">{getDisplayName(user)[0].toUpperCase()}</span>
+              <Crown className="w-3.5 h-3.5 flex-shrink-0" />
+              Upgrade to Pro
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-3 my-1.5 h-px bg-neutral-200 dark:bg-white/[0.05]" />
+
+          {/* User row — shows account info if logged in, Log in button if not */}
+          {user ? (
+            <div>
+              {/* Expandable: sign out */}
+              {menuOpen && (
+                <div className="px-2 pb-1">
+                  <button
+                    onClick={() => { logout(); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors text-left"
+                  >
+                    <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                    Sign out
+                  </button>
                 </div>
               )}
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-[13px] font-medium text-neutral-800 dark:text-white/80 truncate">{getDisplayName(user)}</p>
-                {user.email && <p className="text-[11px] text-neutral-400 dark:text-white/30 truncate">{user.email}</p>}
-              </div>
-              <ChevronUp className={`w-4 h-4 text-neutral-400 dark:text-white/30 flex-shrink-0 transition-transform duration-200 ${menuOpen ? "rotate-0" : "rotate-180"}`} />
-            </button>
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors rounded-xl mx-0"
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full flex-shrink-0 object-cover ring-1 ring-black/5 dark:ring-white/10" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span className="text-white text-[13px] font-semibold">{getDisplayName(user)[0].toUpperCase()}</span>
+                  </div>
+                )}
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/85 truncate leading-tight">{getDisplayName(user)}</p>
+                  {user.email && <p className="text-[11px] text-neutral-400 dark:text-white/30 truncate mt-0.5">{user.email}</p>}
+                </div>
+                <ChevronUp className={`w-3.5 h-3.5 text-neutral-400 dark:text-white/25 flex-shrink-0 transition-transform duration-200 ${menuOpen ? "rotate-0" : "rotate-180"}`} />
+              </button>
+            </div>
           ) : (
-            <button
-              onClick={() => setShowLogin(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0">
-                <LogIn className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-              </div>
-              <span className="flex-1 text-[13px] font-medium text-neutral-700 dark:text-white/60 text-left">Log in</span>
-            </button>
+            <div className="px-2 pb-1">
+              <button
+                onClick={() => setShowLogin(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-white/[0.08] flex items-center justify-center flex-shrink-0">
+                  <LogIn className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                </div>
+                <span className="text-[13px] font-medium text-neutral-700 dark:text-white/60">Log in</span>
+              </button>
+            </div>
           )}
         </div>
       </aside>
