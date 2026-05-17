@@ -127,6 +127,8 @@ export default function Home() {
   const [attachPreviews, setAttachPreviews] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<ModelId>("tatai-smart");
   const [modelDropOpen, setModelDropOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -194,9 +196,10 @@ export default function Home() {
     ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
   }, []);
 
-  function addFiles(files: FileList | null) {
+  function addFiles(files: FileList | File[] | null) {
     if (!files) return;
     const newFiles = Array.from(files);
+    if (newFiles.length === 0) return;
     setAttachments((prev) => [...prev, ...newFiles]);
     newFiles.forEach((file) => {
       if (file.type.startsWith("image/")) {
@@ -207,7 +210,55 @@ export default function Home() {
         setAttachPreviews((p) => [...p, ""]);
       }
     });
+    textareaRef.current?.focus();
   }
+
+  // ── Drag & drop handlers ──
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items.length > 0) setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) { dragCounterRef.current = 0; setIsDragging(false); }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault(); e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) addFiles(files);
+  }
+
+  // ── Global paste handler (works from anywhere on the page) ──
+  useEffect(() => {
+    function handleGlobalPaste(e: ClipboardEvent) {
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        addFiles(files);
+      }
+    }
+    document.addEventListener("paste", handleGlobalPaste);
+    return () => document.removeEventListener("paste", handleGlobalPaste);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function removeAttachment(i: number) {
     setAttachments((p) => p.filter((_, idx) => idx !== i));
@@ -409,7 +460,25 @@ export default function Home() {
       </aside>
 
       {/* ── Main area ── */}
-      <main className="flex-1 flex flex-col min-w-0 relative bg-white dark:bg-[#212121]">
+      <main
+        className="flex-1 flex flex-col min-w-0 relative bg-white dark:bg-[#212121]"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        {/* ── Drop overlay ── */}
+        {isDragging && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-blue-500/10 dark:bg-blue-400/10 border-2 border-dashed border-blue-500 dark:border-blue-400 rounded-none pointer-events-none">
+            <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl px-8 py-6 shadow-2xl border border-blue-200 dark:border-blue-500/30 flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                <Paperclip className="w-7 h-7 text-blue-500" />
+              </div>
+              <p className="text-[16px] font-bold text-neutral-900 dark:text-white">Drop files here</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Images, PDFs, code files — anything</p>
+            </div>
+          </div>
+        )}
 
         {/* Top bar */}
         <header className="flex items-center gap-2 px-3 py-2.5 border-b border-neutral-100 dark:border-white/[0.04]">
@@ -578,11 +647,15 @@ export default function Home() {
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
                 onPaste={(e) => {
+                  // Handle file/image paste directly in textarea
                   const items = Array.from(e.clipboardData.items);
-                  const imageItem = items.find(item => item.type.startsWith("image/"));
-                  if (imageItem) {
-                    const file = imageItem.getAsFile();
-                    if (file) addFiles(Object.assign(new DataTransfer(), { files: [file] }).files);
+                  const files = items
+                    .filter(item => item.kind === "file")
+                    .map(item => item.getAsFile())
+                    .filter(Boolean) as File[];
+                  if (files.length > 0) {
+                    e.preventDefault();
+                    addFiles(files);
                   }
                 }}
                 placeholder={attachments.length > 0 ? "Add a message or just send the file..." : "Message tataI"}
