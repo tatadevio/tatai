@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "tataAI — Your AI Assistant";
+export const alt = "tatAI — Your AI Assistant";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -62,7 +62,7 @@ export default function OGImage() {
           marginBottom: 16,
           display: "flex",
         }}>
-          tataAI
+          tatAI
         </div>
 
         {/* Subtitle */}

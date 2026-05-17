@@ -5,14 +5,14 @@ import { TataILogo } from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Read tataAI's privacy policy to understand how we collect, use, and protect your data.",
+  description: "Read tatAI's privacy policy to understand how we collect, use, and protect your data.",
 };
 
 export default function PrivacyPage() {
   const sections = [
     {
       title: "Information We Collect",
-      content: "We collect information you provide directly to us, such as your name and email address when you create an account. We also collect information about how you use tataAI, including your conversations with the AI assistant.",
+      content: "We collect information you provide directly to us, such as your name and email address when you create an account. We also collect information about how you use tatAI, including your conversations with the AI assistant.",
     },
     {
       title: "How We Use Your Information",
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
         </Link>
         <div className="flex items-center gap-2">
           <TataILogo className="w-6 h-6" />
-          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataAI</span>
+          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tatAI</span>
         </div>
       </header>
 

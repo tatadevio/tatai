@@ -67,7 +67,7 @@ const SUGGESTIONS = [
 
 const BOTTOM_LINKS = [
   { icon: Settings, label: "Settings", href: "/settings" },
-  { icon: Info, label: "About tataAI", href: "/about" },
+  { icon: Info, label: "About tatAI", href: "/about" },
   { icon: Shield, label: "Privacy Policy", href: "/privacy" },
   { icon: FileTerminal, label: "Terms of Service", href: "/terms" },
 ];
@@ -566,7 +566,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             {/* Hide logo on mobile — welcome screen already shows it */}
             <TataILogo className="hidden sm:block w-7 h-7" />
-            <span className="font-semibold text-[15px] text-neutral-900 dark:text-white">tataAI</span>
+            <span className="font-semibold text-[15px] text-neutral-900 dark:text-white">tatAI</span>
           </div>
           <button onClick={newChat} title="New chat" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-500 dark:text-white/50">
             <Plus className="w-4 h-4" />
@@ -712,14 +712,14 @@ export default function Home() {
             messages.length > 0 && (
               <div className="flex-1 flex items-center justify-center gap-2">
                 <TataILogo className="w-6 h-6" />
-                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataAI</span>
+                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tatAI</span>
               </div>
             )
           ) : (
             !sidebarOpen && (
               <div className="flex items-center gap-2 ml-1">
                 <TataILogo className="w-6 h-6" />
-                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataAI</span>
+                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tatAI</span>
               </div>
             )
           )}
@@ -916,7 +916,7 @@ export default function Home() {
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
-                placeholder={attachments.length > 0 ? "Add a message or just send the file..." : "Message tataAI"}
+                placeholder={attachments.length > 0 ? "Add a message or just send the file..." : "Message tatAI"}
                 rows={1}
                 className="w-full resize-none bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-[14.5px] leading-relaxed tracking-[-0.01em] px-4 pt-3.5 pb-12 focus:outline-none min-h-[56px] max-h-[200px]"
               />
@@ -1042,7 +1042,7 @@ export default function Home() {
               </div>
             </div>
             <p className="text-center text-neutral-400 dark:text-neutral-500/60 text-[11px] mt-2 tracking-wide">
-              tataAI can make mistakes · always verify important info
+              tatAI can make mistakes · always verify important info
             </p>
           </div>
         </div>
@@ -1078,7 +1078,7 @@ export default function Home() {
 
             {/* Status text */}
             <p className="text-white text-xl font-semibold mb-2">
-              {voiceSpeaking ? "tataAI is speaking…" : voiceListening ? "Listening…" : "Tap mic to speak"}
+              {voiceSpeaking ? "tatAI is speaking…" : voiceListening ? "Listening…" : "Tap mic to speak"}
             </p>
             {voiceTranscript && (
               <p className="text-white/50 text-sm max-w-xs text-center mb-4">{voiceTranscript}</p>
@@ -1114,7 +1114,7 @@ export default function Home() {
               </button>
             </div>
 
-            <p className="text-white/20 text-xs mt-8">Powered by tataAI · tatadev LLC</p>
+            <p className="text-white/20 text-xs mt-8">Powered by tatAI · tatadev LLC</p>
           </div>
         )}
       </main>

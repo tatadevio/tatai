@@ -4,8 +4,8 @@ import Link from "next/link";
 import { TataILogo } from "@/components/Logo";
 
 export const metadata: Metadata = {
-  title: "About tataAI",
-  description: "Learn about tataAI — the AI assistant built by tatadev LLC to make AI accessible and powerful for everyone.",
+  title: "About tatAI",
+  description: "Learn about tatAI — the AI assistant built by tatadev LLC to make AI accessible and powerful for everyone.",
 };
 
 export default function AboutPage() {
@@ -17,14 +17,14 @@ export default function AboutPage() {
         </Link>
         <div className="flex items-center gap-2">
           <TataILogo className="w-6 h-6" />
-          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataAI</span>
+          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tatAI</span>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="text-center mb-12">
           <TataILogo className="w-16 h-16 mx-auto mb-5 drop-shadow-xl" />
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3">About tataAI</h1>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3">About tatAI</h1>
           <p className="text-neutral-500 dark:text-white/40 text-[16px] leading-relaxed">
             Your personal AI assistant, built to make you more productive, creative, and informed.
           </p>
@@ -35,7 +35,7 @@ export default function AboutPage() {
             { icon: Sparkles, title: "Powered by AI", desc: "State-of-the-art language models for smart, accurate responses." },
             { icon: Zap, title: "Fast & Reliable", desc: "Streaming responses so you see answers as they're generated." },
             { icon: Shield, title: "Private & Secure", desc: "Your conversations are encrypted and never sold to third parties." },
-            { icon: Globe, title: "Always Available", desc: "Access tataAI from any device, anywhere, anytime." },
+            { icon: Globe, title: "Always Available", desc: "Access tatAI from any device, anywhere, anytime." },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/[0.07] rounded-2xl p-5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center mb-3">
@@ -48,8 +48,8 @@ export default function AboutPage() {
         </div>
 
         <div className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/[0.07] rounded-2xl p-6 text-center">
-          <p className="text-sm text-neutral-500 dark:text-white/40">tataAI v1.0 — Built with passion.</p>
-          <p className="text-xs text-neutral-400 dark:text-white/20 mt-1">© {new Date().getFullYear()} tataAI. All rights reserved.</p>
+          <p className="text-sm text-neutral-500 dark:text-white/40">tatAI v1.0 — Built with passion.</p>
+          <p className="text-xs text-neutral-400 dark:text-white/20 mt-1">© {new Date().getFullYear()} tatAI. All rights reserved.</p>
         </div>
       </div>
     </div>

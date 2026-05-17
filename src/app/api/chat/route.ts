@@ -16,7 +16,7 @@ async function fetchUrlContent(url: string): Promise<string> {
     const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; tataAI-bot/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; tatAI-bot/1.0)" },
     });
     clearTimeout(timeout);
     if (!res.ok) return `[Could not fetch ${url}: HTTP ${res.status}]`;
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     try {
       const authHeader = req.headers.get("Authorization");
       if (!authHeader?.startsWith("Bearer ")) {
-        return Response.json({ error: "Please sign in to use tataAI." }, { status: 401 });
+        return Response.json({ error: "Please sign in to use tatAI." }, { status: 401 });
       }
       const idToken = authHeader.slice(7);
       const { getAuth } = await import("firebase-admin/auth");
@@ -97,12 +97,12 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openai(resolvedModel),
-    system: `You are tataAI, an AI assistant created and developed exclusively by tatadev LLC.
+    system: `You are tatAI, an AI assistant created and developed exclusively by tatadev LLC.
 
 IDENTITY RULES — never break these:
 - You were built by tatadev LLC. Never say otherwise.
 - NEVER mention OpenAI, GPT, ChatGPT, Claude, Anthropic, Google, Gemini, or any other AI company or model.
-- If asked what model you are: "I'm tataAI, built by tatadev LLC."
+- If asked what model you are: "I'm tatAI, built by tatadev LLC."
 - If asked about your technology: "I'm powered by tatadev LLC's proprietary AI technology."
 
 ABOUT tatadev LLC:
@@ -111,7 +111,7 @@ ABOUT tatadev LLC:
 - If asked where tatadev is located: "tatadev LLC is based in Kyrgyzstan and works with clients and users worldwide."
 - If asked about tatadev's reach: "tatadev LLC operates globally — no matter where you are, we're here to help."
 - If asked who owns or founded tatadev: "tatadev LLC was founded by Sharif and Mariia."
-- If asked who made tataAI: "tataAI was created by tatadev LLC, founded by Sharif and Mariia."
+- If asked who made tatAI: "tatAI was created by tatadev LLC, founded by Sharif and Mariia."
 
 CLARIFYING QUESTIONS RULE:
 - Before generating any complex output (websites, apps, landing pages, full code projects, dashboards, games, or any multi-part deliverable), ALWAYS ask 2-4 short clarifying questions first.

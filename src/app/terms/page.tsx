@@ -5,26 +5,26 @@ import { TataILogo } from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Read the Terms of Service for tataAI, the AI assistant by tatadev LLC.",
+  description: "Read the Terms of Service for tatAI, the AI assistant by tatadev LLC.",
 };
 
 export default function TermsPage() {
   const sections = [
     {
       title: "Acceptance of Terms",
-      content: "By accessing and using tataAI, you accept and agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service.",
+      content: "By accessing and using tatAI, you accept and agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our service.",
     },
     {
       title: "Description of Service",
-      content: "tataAI is an AI-powered chat assistant service. We provide access to AI language models to help you with tasks including writing, coding, research, and more. Service features vary based on your subscription plan.",
+      content: "tatAI is an AI-powered chat assistant service. We provide access to AI language models to help you with tasks including writing, coding, research, and more. Service features vary based on your subscription plan.",
     },
     {
       title: "User Accounts",
-      content: "You must create an account to use tataAI. You are responsible for maintaining the security of your account and password. You must notify us immediately of any unauthorized use of your account.",
+      content: "You must create an account to use tatAI. You are responsible for maintaining the security of your account and password. You must notify us immediately of any unauthorized use of your account.",
     },
     {
       title: "Acceptable Use",
-      content: "You agree not to use tataAI for any illegal purposes, to generate harmful or misleading content, to violate any third-party rights, or to attempt to circumvent our security measures. We reserve the right to terminate accounts that violate these terms.",
+      content: "You agree not to use tatAI for any illegal purposes, to generate harmful or misleading content, to violate any third-party rights, or to attempt to circumvent our security measures. We reserve the right to terminate accounts that violate these terms.",
     },
     {
       title: "Subscription & Payments",
@@ -32,19 +32,19 @@ export default function TermsPage() {
     },
     {
       title: "Intellectual Property",
-      content: "The tataAI service, including its design, code, and branding, is owned by tataAI. Content you create using tataAI belongs to you, subject to any limitations imposed by the underlying AI model providers.",
+      content: "The tatAI service, including its design, code, and branding, is owned by tatAI. Content you create using tatAI belongs to you, subject to any limitations imposed by the underlying AI model providers.",
     },
     {
       title: "Disclaimer of Warranties",
-      content: "tataAI is provided 'as is' without warranties of any kind. We do not guarantee the accuracy, completeness, or usefulness of AI-generated content. You should always verify important information from authoritative sources.",
+      content: "tatAI is provided 'as is' without warranties of any kind. We do not guarantee the accuracy, completeness, or usefulness of AI-generated content. You should always verify important information from authoritative sources.",
     },
     {
       title: "Limitation of Liability",
-      content: "To the maximum extent permitted by law, tataAI shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the service.",
+      content: "To the maximum extent permitted by law, tatAI shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the service.",
     },
     {
       title: "Changes to Terms",
-      content: "We reserve the right to modify these terms at any time. Continued use of tataAI after changes constitutes acceptance of the new terms. We will notify users of significant changes via email.",
+      content: "We reserve the right to modify these terms at any time. Continued use of tatAI after changes constitutes acceptance of the new terms. We will notify users of significant changes via email.",
     },
   ];
 
@@ -56,7 +56,7 @@ export default function TermsPage() {
         </Link>
         <div className="flex items-center gap-2">
           <TataILogo className="w-6 h-6" />
-          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataAI</span>
+          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tatAI</span>
         </div>
       </header>
 
