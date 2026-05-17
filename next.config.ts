@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Hide Next.js version header
   poweredByHeader: false,
+
+  // Proxy Firebase auth handler through tatai.cloud so Google popup shows tatai.cloud
+  async rewrites() {
+    return [
+      {
+        source: "/__/auth/:path*",
+        destination: "https://tatai-d1fe3.firebaseapp.com/__/auth/:path*",
+      },
+    ];
+  },
 
   async headers() {
     return [
