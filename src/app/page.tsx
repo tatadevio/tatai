@@ -5,19 +5,18 @@ export const dynamic = "force-dynamic";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useRef, useEffect, useState, useCallback } from "react";
-import { UserButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
   Send, Plus, Code, FileText, Search, Zap, Crown,
-  MessageSquare, Settings, ChevronRight, Info, Shield,
-  FileTerminal, PanelLeft,
+  MessageSquare, Settings, Info, Shield, FileTerminal,
+  PanelLeft, Copy, Check, User,
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { TataILogo } from "@/components/Logo";
 
 const SUGGESTIONS = [
-  { icon: Code, label: "Write code", desc: "Debug, build, explain", prompt: "Help me write a Python script to sort a list of files by date." },
+  { icon: Code, label: "Write code", desc: "Debug, build, explain", prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
   { icon: FileText, label: "Draft content", desc: "Emails, posts, docs", prompt: "Write a professional LinkedIn post about launching a new AI startup." },
   { icon: Search, label: "Research", desc: "Explain anything", prompt: "Explain how large language models work in simple terms." },
   { icon: Zap, label: "Brainstorm", desc: "Ideas & strategy", prompt: "Give me 10 startup ideas in the AI space for 2026." },
@@ -30,247 +29,301 @@ const BOTTOM_LINKS = [
   { icon: FileTerminal, label: "Terms of Service", href: "/terms" },
 ];
 
-interface UserData { plan: "free" | "pro"; messages_today: number; messages_total: number; }
 interface Session { id: string; title: string; }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+      className="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-white transition-colors"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
+function MessageContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+        h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-4 first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-4 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-base font-semibold mb-2 mt-3 first:mt-0">{children}</h3>,
+        ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        code: ({ children, className }) => {
+          const isBlock = className?.includes("language-");
+          if (isBlock) {
+            const lang = className?.replace("language-", "") ?? "";
+            const codeText = String(children).trim();
+            return (
+              <div className="my-3 rounded-xl overflow-hidden border border-neutral-200 dark:border-white/[0.08]">
+                <div className="flex items-center justify-between bg-neutral-100 dark:bg-white/[0.05] px-4 py-2 border-b border-neutral-200 dark:border-white/[0.08]">
+                  <span className="text-xs font-mono text-neutral-500 dark:text-white/40">{lang || "code"}</span>
+                  <CopyButton text={codeText} />
+                </div>
+                <pre className="bg-neutral-50 dark:bg-[#1a1a1a] p-4 overflow-x-auto text-[13px] leading-relaxed">
+                  <code className="font-mono text-neutral-800 dark:text-neutral-200">{codeText}</code>
+                </pre>
+              </div>
+            );
+          }
+          return <code className="font-mono text-[13px] bg-neutral-100 dark:bg-white/[0.08] px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400">{children}</code>;
+        },
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-4 border-blue-400 pl-4 my-3 text-neutral-600 dark:text-white/60 italic">{children}</blockquote>
+        ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-3"><table className="w-full border-collapse border border-neutral-200 dark:border-white/[0.08] rounded-lg text-sm">{children}</table></div>
+        ),
+        th: ({ children }) => <th className="border border-neutral-200 dark:border-white/[0.08] bg-neutral-50 dark:bg-white/[0.04] px-3 py-2 text-left font-semibold">{children}</th>,
+        td: ({ children }) => <td className="border border-neutral-200 dark:border-white/[0.08] px-3 py-2">{children}</td>,
+        strong: ({ children }) => <strong className="font-semibold text-neutral-900 dark:text-white">{children}</strong>,
+        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline hover:no-underline">{children}</a>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
 export default function Home() {
-  const { user } = useUser();
   const router = useRouter();
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [limitError, setLimitError] = useState("");
+  const [activeSession, setActiveSession] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const fetchUserData = useCallback(async () => {
-    const res = await fetch("/api/user");
-    if (res.ok) setUserData(await res.json());
-  }, []);
-
-  useEffect(() => { fetchUserData(); }, [fetchUserData]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
-    onError: () => setLimitError("Daily limit reached. Upgrade to Pro for unlimited messages."),
-    onFinish: () => fetchUserData(),
   });
 
   const isLoading = status === "streaming" || status === "submitted";
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const autoResize = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
+  }, []);
 
   function handleSend() {
     if (!input.trim() || isLoading) return;
-    setLimitError("");
     const text = input.trim();
-    if (messages.length === 0) setSessions((p) => [{ id: Date.now().toString(), title: text.slice(0, 36) }, ...p]);
+    if (messages.length === 0) {
+      const id = Date.now().toString();
+      setSessions((p) => [{ id, title: text.slice(0, 40) }, ...p]);
+      setActiveSession(id);
+    }
     sendMessage({ text });
     setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
-  function newChat() { setMessages([]); setInput(""); setLimitError(""); }
-
-  const isPro = userData?.plan === "pro";
-  const messagesLeft = userData ? Math.max(0, 10 - (userData.messages_today ?? 0)) : null;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  function newChat() {
+    setMessages([]);
+    setInput("");
+    setActiveSession(null);
+    if (textareaRef.current) textareaRef.current.focus();
+  }
 
   return (
-    <div className="flex h-full bg-neutral-50 dark:bg-[#0a0a0a]">
+    <div className="flex h-full bg-white dark:bg-[#212121]">
 
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "w-[260px]" : "w-0"} transition-all duration-200 overflow-hidden flex-shrink-0 flex flex-col bg-white dark:bg-[#111] border-r border-neutral-200 dark:border-white/[0.06]`}>
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-[18px]">
-          <TataILogo className="w-8 h-8 flex-shrink-0" />
-          <span className="font-bold text-[17px] tracking-tight text-neutral-900 dark:text-white">tataI</span>
-        </div>
-
-        {/* New Chat */}
-        <div className="px-3 mb-1">
-          <button onClick={newChat} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.06] transition-colors text-sm text-neutral-500 dark:text-white/50 hover:text-neutral-900 dark:hover:text-white group">
-            <div className="w-6 h-6 rounded-lg bg-neutral-100 dark:bg-white/[0.06] group-hover:bg-neutral-200 dark:group-hover:bg-white/10 flex items-center justify-center transition-colors">
-              <Plus className="w-3.5 h-3.5" />
-            </div>
-            New conversation
+      {/* ── Sidebar ── */}
+      <aside className={`${sidebarOpen ? "w-[260px]" : "w-0"} transition-all duration-200 overflow-hidden flex-shrink-0 flex flex-col bg-neutral-50 dark:bg-[#171717]`}>
+        {/* Logo + New chat */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <TataILogo className="w-7 h-7" />
+            <span className="font-semibold text-[15px] text-neutral-900 dark:text-white">tataI</span>
+          </div>
+          <button onClick={newChat} title="New chat" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-500 dark:text-white/50">
+            <Plus className="w-4 h-4" />
           </button>
         </div>
 
         {/* Chat history */}
-        <ScrollArea className="flex-1 px-3">
+        <div className="flex-1 overflow-y-auto px-2 py-1">
           {sessions.length > 0 && (
-            <>
-              <p className="text-[11px] font-semibold text-neutral-400 dark:text-white/25 px-3 pt-3 pb-1.5 uppercase tracking-widest">Recent</p>
-              {sessions.map((s) => (
-                <button key={s.id} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm truncate transition-colors text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 text-left">
-                  <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
-                  {s.title}
-                </button>
-              ))}
-            </>
+            <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-2 pb-1">Today</p>
           )}
-        </ScrollArea>
-
-        {/* Bottom links */}
-        <div className="px-3 py-2 border-t border-neutral-100 dark:border-white/[0.06]">
-          {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
-            <button key={label} onClick={() => router.push(href)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left">
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
+          {sessions.map((s) => (
+            <button
+              key={s.id}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] truncate transition-colors text-left ${
+                activeSession === s.id
+                  ? "bg-neutral-200 dark:bg-white/[0.08] text-neutral-900 dark:text-white"
+                  : "text-neutral-600 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white/80"
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
+              {s.title}
             </button>
           ))}
         </div>
 
-        {/* Upgrade + user */}
-        <div className="p-3 border-t border-neutral-100 dark:border-white/[0.06] space-y-1">
-          {!isPro ? (
-            <button onClick={() => router.push("/upgrade")} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-violet-50 dark:from-blue-600/15 dark:to-violet-600/15 hover:from-blue-100 dark:hover:from-blue-600/25 hover:to-violet-100 dark:hover:to-violet-600/25 border border-blue-100 dark:border-blue-500/20 transition-all group">
-              <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">Upgrade to Pro</p>
-                {messagesLeft !== null && <p className="text-xs text-blue-500/60 dark:text-blue-400/50">{messagesLeft} messages left today</p>}
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-blue-500/50 group-hover:text-blue-600 dark:text-blue-400/50 transition-colors" />
+        {/* Bottom links */}
+        <div className="px-2 py-2 border-t border-neutral-200 dark:border-white/[0.06]">
+          {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
+            <button
+              key={label}
+              onClick={() => router.push(href)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left"
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
             </button>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-2">
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span className="text-sm text-amber-600 dark:text-amber-400 font-semibold">Pro — Unlimited</span>
-            </div>
-          )}
-
-          <button onClick={() => router.push("/settings")} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors">
-            <UserButton />
-            <div className="min-w-0 flex-1 text-left">
-              <p className="text-sm font-medium text-neutral-700 dark:text-white/70 truncate">{user?.firstName ?? user?.username ?? "You"}</p>
-              <p className="text-xs text-neutral-400 dark:text-white/25 truncate">{user?.emailAddresses?.[0]?.emailAddress}</p>
-            </div>
+          ))}
+          <button
+            onClick={() => router.push("/upgrade")}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
+          >
+            <Crown className="w-3.5 h-3.5" />
+            Upgrade to Pro
           </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col min-w-0 relative">
-        {/* Header */}
-        <header className="flex items-center gap-3 px-5 py-4 border-b border-neutral-200 dark:border-white/[0.06] bg-white/80 dark:bg-transparent backdrop-blur-sm">
-          <button onClick={() => setSidebarOpen((v) => !v)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white">
+      {/* ── Main area ── */}
+      <main className="flex-1 flex flex-col min-w-0 relative bg-white dark:bg-[#212121]">
+
+        {/* Top bar */}
+        <header className="flex items-center gap-2 px-4 py-3">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40"
+          >
             <PanelLeft className="w-4 h-4" />
           </button>
           {!sidebarOpen && (
-            <div className="flex items-center gap-2">
-              <TataILogo className="w-6 h-6" />
-              <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataI</span>
-            </div>
-          )}
-          {isPro && (
-            <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-400/10 border border-amber-200 dark:border-amber-400/15 px-2.5 py-1 rounded-full">
-              <Crown className="w-3 h-3" /> Pro
-            </span>
+            <>
+              <TataILogo className="w-6 h-6 ml-1" />
+              <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataI</span>
+            </>
           )}
         </header>
 
-        {/* Messages area */}
+        {/* Messages / Welcome */}
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-full py-16 px-6 gap-10">
-              <div className="text-center">
-                <TataILogo className="w-14 h-14 mx-auto mb-5 drop-shadow-xl" />
-                <h1 className="text-[28px] font-bold text-neutral-900 dark:text-white mb-2 tracking-tight">
-                  {greeting}{user?.firstName ? `, ${user.firstName}` : ""}
-                </h1>
-                <p className="text-neutral-500 dark:text-white/35 text-[15px]">What can I help you with today?</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 w-full max-w-[520px]">
+            /* ── Welcome screen ── */
+            <div className="flex flex-col items-center justify-center min-h-full px-4 pb-32">
+              <TataILogo className="w-12 h-12 mb-5" />
+              <h1 className="text-[26px] font-semibold text-neutral-900 dark:text-white mb-1">How can I help you?</h1>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-10">tataI is your personal AI assistant</p>
+              <div className="grid grid-cols-2 gap-3 w-full max-w-[560px]">
                 {SUGGESTIONS.map(({ icon: Icon, label, desc, prompt }) => (
-                  <button key={label} onClick={() => { setSessions((p) => [{ id: Date.now().toString(), title: prompt.slice(0, 36) }, ...p]); sendMessage({ text: prompt }); }}
-                    className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-white dark:bg-white/[0.04] hover:bg-neutral-50 dark:hover:bg-white/[0.08] border border-neutral-200 dark:border-white/[0.07] hover:border-blue-200 dark:hover:border-white/[0.14] transition-all text-left group shadow-sm hover:shadow-md dark:shadow-none">
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/20 transition-colors">
-                      <Icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    </div>
+                  <button
+                    key={label}
+                    onClick={() => { setSessions((p) => [{ id: Date.now().toString(), title: prompt.slice(0, 40) }, ...p]); sendMessage({ text: prompt }); }}
+                    className="flex items-start gap-3 p-4 rounded-2xl border border-neutral-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.06] hover:border-neutral-300 dark:hover:border-white/[0.14] transition-all text-left group"
+                  >
+                    <Icon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 mt-0.5 flex-shrink-0 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                     <div>
-                      <p className="text-sm font-semibold text-neutral-800 dark:text-white/80 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">{label}</p>
-                      <p className="text-xs text-neutral-400 dark:text-white/30 mt-0.5">{desc}</p>
+                      <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{label}</p>
+                      <p className="text-[12px] text-neutral-400 dark:text-white/30 mt-0.5">{desc}</p>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="max-w-[720px] mx-auto px-5 py-8 flex flex-col gap-7">
+            /* ── Conversation ── */
+            <div className="max-w-[760px] mx-auto px-4 py-6 space-y-6">
               {messages.map((m) => (
-                <div key={m.id} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                  {m.role === "assistant" && <TataILogo className="w-8 h-8 flex-shrink-0 mt-1 drop-shadow-md" />}
-                  <div className={`max-w-[78%] text-[14.5px] leading-relaxed rounded-2xl px-4 py-3 ${
-                    m.role === "user"
-                      ? "bg-blue-600 text-white rounded-tr-md shadow-lg shadow-blue-500/20"
-                      : "bg-white dark:bg-white/[0.05] text-neutral-800 dark:text-white/85 border border-neutral-200 dark:border-white/[0.07] rounded-tl-md shadow-sm dark:shadow-none"
-                  }`}>
-                    {m.parts.map((part, i) => part.type === "text" ? <span key={i} className="whitespace-pre-wrap">{part.text}</span> : null)}
+                <div key={m.id} className={`flex gap-4 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                  {/* Avatar */}
+                  {m.role === "assistant" ? (
+                    <TataILogo className="w-8 h-8 flex-shrink-0 mt-1" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-neutral-800 dark:bg-neutral-600 flex items-center justify-center flex-shrink-0 mt-1">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+
+                  <div className={`flex-1 min-w-0 ${m.role === "user" ? "flex justify-end" : ""}`}>
+                    {m.role === "user" ? (
+                      <div className="max-w-[85%] bg-neutral-100 dark:bg-[#2f2f2f] text-neutral-900 dark:text-white rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap">
+                        {m.parts.map((part, i) => part.type === "text" ? part.text : null)}
+                      </div>
+                    ) : (
+                      <div className="text-neutral-800 dark:text-neutral-100 text-[14px] leading-relaxed">
+                        <MessageContent content={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")} />
+                        <div className="mt-2 flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100">
+                          <CopyButton text={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
 
-              {isLoading && (
-                <div className="flex gap-3">
-                  <TataILogo className="w-8 h-8 flex-shrink-0 drop-shadow-md" />
-                  <div className="bg-white dark:bg-white/[0.05] border border-neutral-200 dark:border-white/[0.07] rounded-2xl rounded-tl-md px-4 py-3.5 flex items-center gap-1.5 shadow-sm dark:shadow-none">
-                    {[0, 150, 300].map((d) => (
-                      <span key={d} className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400/70 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+              {/* Typing indicator */}
+              {isLoading && status === "submitted" && (
+                <div className="flex gap-4">
+                  <TataILogo className="w-8 h-8 flex-shrink-0" />
+                  <div className="flex items-center gap-1 pt-2">
+                    {[0, 1, 2].map((i) => (
+                      <span key={i} className="w-2 h-2 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
                     ))}
                   </div>
                 </div>
               )}
-              <div ref={bottomRef} />
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>
 
-        {/* Input */}
-        <div className="px-5 pb-5 pt-3 bg-white/80 dark:bg-transparent backdrop-blur-sm border-t border-neutral-200 dark:border-white/[0.06]">
-          <div className="max-w-[720px] mx-auto">
-            {limitError && (
-              <div className="mb-3 flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl px-4 py-3">
-                <p className="text-amber-700 dark:text-amber-400 text-sm">{limitError}</p>
-                <button onClick={() => router.push("/upgrade")} className="ml-3 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">
-                  Upgrade →
-                </button>
-              </div>
-            )}
-            <div className="flex items-end gap-3 bg-white dark:bg-white/[0.05] border border-neutral-200 dark:border-white/[0.09] hover:border-blue-300 dark:hover:border-white/[0.14] focus-within:border-blue-500 dark:focus-within:border-blue-500/50 rounded-2xl px-4 py-3 transition-all shadow-sm dark:shadow-none">
-              <Textarea
+        {/* ── Input bar ── */}
+        <div className={`px-4 pb-6 pt-2 ${messages.length === 0 ? "absolute bottom-0 left-0 right-0" : ""}`}>
+          <div className="max-w-[760px] mx-auto">
+            <div className="relative bg-white dark:bg-[#2f2f2f] border border-neutral-200 dark:border-neutral-600 rounded-2xl shadow-sm dark:shadow-none overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-400 transition-colors">
+              <textarea
                 ref={textareaRef}
                 value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 180) + "px";
-                }}
+                onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask tataI anything..."
-                className="flex-1 resize-none bg-transparent border-0 focus-visible:ring-0 text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/25 text-[14.5px] min-h-[24px] max-h-[180px] p-0 leading-relaxed"
+                placeholder="Message tataI"
                 rows={1}
+                className="w-full resize-none bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-[14px] leading-relaxed px-4 pt-3.5 pb-12 focus:outline-none min-h-[56px] max-h-[200px]"
               />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-                  input.trim() && !isLoading
-                    ? "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 hover:scale-105"
-                    : "bg-neutral-100 dark:bg-white/[0.07] cursor-not-allowed"
-                }`}
-              >
-                <Send className="w-3.5 h-3.5 text-white dark:text-white" />
-              </button>
+              {/* Toolbar inside input */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-neutral-400 dark:text-neutral-500 px-2">tataI</span>
+                </div>
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                    input.trim() && !isLoading
+                      ? "bg-neutral-900 dark:bg-white hover:bg-neutral-700 dark:hover:bg-neutral-200"
+                      : "bg-neutral-200 dark:bg-neutral-600 cursor-not-allowed"
+                  }`}
+                >
+                  <Send className={`w-3.5 h-3.5 ${input.trim() && !isLoading ? "text-white dark:text-neutral-900" : "text-neutral-400 dark:text-neutral-400"}`} />
+                </button>
+              </div>
             </div>
-            <p className="text-center text-neutral-400 dark:text-white/[0.18] text-xs mt-2.5">tataI can make mistakes. Always verify important information.</p>
+            <p className="text-center text-neutral-400 dark:text-neutral-500 text-[11px] mt-2">
+              tataI can make mistakes. Check important info.
+            </p>
           </div>
         </div>
       </main>
