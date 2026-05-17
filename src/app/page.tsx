@@ -561,10 +561,11 @@ export default function Home() {
           : `${sidebarOpen ? "w-[256px]" : "w-0"} transition-all duration-200 overflow-hidden flex-shrink-0`}
         flex flex-col bg-neutral-50 dark:bg-[#161616] h-full border-r border-neutral-200/60 dark:border-white/[0.05]
       `}>
-        {/* Logo + New chat */}
+        {/* Sidebar header */}
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <TataILogo className="w-7 h-7" />
+            {/* Hide logo on mobile — welcome screen already shows it */}
+            <TataILogo className="hidden sm:block w-7 h-7" />
             <span className="font-semibold text-[15px] text-neutral-900 dark:text-white">tataI</span>
           </div>
           <button onClick={newChat} title="New chat" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-500 dark:text-white/50">
@@ -706,12 +707,14 @@ export default function Home() {
             <PanelLeft className="w-4 h-4" />
           </button>
 
-          {/* Mobile: center logo */}
+          {/* Mobile: center logo — only show when there are messages (welcome screen has its own logo) */}
           {isMobile ? (
-            <div className="flex-1 flex items-center justify-center gap-2">
-              <TataILogo className="w-6 h-6" />
-              <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataI</span>
-            </div>
+            messages.length > 0 && (
+              <div className="flex-1 flex items-center justify-center gap-2">
+                <TataILogo className="w-6 h-6" />
+                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataI</span>
+              </div>
+            )
           ) : (
             !sidebarOpen && (
               <div className="flex items-center gap-2 ml-1">
