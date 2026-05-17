@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -153,19 +151,28 @@ export default function UpgradePage() {
                     <p className="text-red-400 text-xs mb-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
                   )}
 
-                  <PayPalScriptProvider
-                    options={{
-                      clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "test",
-                      currency: "USD",
-                    }}
-                  >
-                    <PayPalButtons
-                      style={{ layout: "vertical", color: "gold", shape: "pill", label: "subscribe", height: 44 }}
-                      createOrder={createOrder}
-                      onApprove={onApprove}
-                      onError={() => setError("Payment error. Please try again.")}
-                    />
-                  </PayPalScriptProvider>
+                  {process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
+                    <PayPalScriptProvider
+                      options={{
+                        clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+                        currency: "USD",
+                      }}
+                    >
+                      <PayPalButtons
+                        style={{ layout: "vertical", color: "gold", shape: "pill", label: "pay", height: 44 }}
+                        createOrder={createOrder}
+                        onApprove={onApprove}
+                        onError={() => setError("Payment error. Please try again.")}
+                      />
+                    </PayPalScriptProvider>
+                  ) : (
+                    <a
+                      href="mailto:support@tatai.cloud"
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold text-center block hover:opacity-90 transition-opacity"
+                    >
+                      Contact us to upgrade →
+                    </a>
+                  )}
                 </div>
               </div>
 
