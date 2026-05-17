@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,24 +13,16 @@ export const metadata: Metadata = {
   description: "tataAI: a powerful AI assistant for everyone.",
 };
 
-async function Providers({ children }: { children: React.ReactNode }) {
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-    const { ClerkProvider } = await import("@clerk/nextjs");
-    return <ClerkProvider>{children}</ClerkProvider>;
-  }
-  return <>{children}</>;
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="h-full bg-[#0f0f0f] text-white">
-        <Providers>{children}</Providers>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
+        <body className="h-full bg-[#0f0f0f] text-white">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
