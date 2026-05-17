@@ -122,7 +122,7 @@ function MessageActions({ text, onRegenerate, isLast }: { text: string; onRegene
   const btn = "p-1.5 rounded-lg text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-all active:scale-95";
 
   return (
-    <div className="mt-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="mt-2 flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
       <button onClick={copy} title="Copy" className={btn}>
         {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
