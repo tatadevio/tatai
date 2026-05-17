@@ -329,21 +329,41 @@ export default function Home() {
 
     if (attachments.length > 0) {
       const names = [...pendingFileNames.current];
-      const dt = new DataTransfer();
-      attachments.forEach((f) => dt.items.add(f));
-      // Store names keyed by timestamp so we can look them up when rendering
-      const tempKey = sessionId!;
-      // We'll store names after the message is added; use a small delay
       const capturedNames = names;
-      setTimeout(() => {
-        setMsgFileNames(prev => {
-          // Find the latest user message id from messages
-          const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-          if (lastUserMsg) return { ...prev, [lastUserMsg.id]: capturedNames };
-          return prev;
-        });
-      }, 200);
-      sendMessage({ text, files: dt.files });
+
+      // Separate images (vision) from text-readable files
+      const imageFiles = attachments.filter(f => f.type.startsWith("image/"));
+      const textFiles = attachments.filter(f => !f.type.startsWith("image/"));
+
+      // Read all text files as strings, then send
+      const readPromises = textFiles.map(f => new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(
+          `\n\n--- File: ${f.name} ---\n${e.target?.result as string}\n--- End of ${f.name} ---`
+        );
+        reader.onerror = () => resolve(`\n\n[Could not read file: ${f.name}]`);
+        reader.readAsText(f);
+      }));
+
+      Promise.all(readPromises).then((fileContents) => {
+        const combinedText = text + fileContents.join("");
+
+        setTimeout(() => {
+          setMsgFileNames(prev => {
+            const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+            if (lastUserMsg) return { ...prev, [lastUserMsg.id]: capturedNames };
+            return prev;
+          });
+        }, 200);
+
+        if (imageFiles.length > 0) {
+          const dt = new DataTransfer();
+          imageFiles.forEach(f => dt.items.add(f));
+          sendMessage({ text: combinedText, files: dt.files });
+        } else {
+          sendMessage({ text: combinedText });
+        }
+      });
     } else {
       sendMessage({ text });
     }
