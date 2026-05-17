@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { TataILogo } from "./Logo";
 import {
-  signInWithRedirect, GoogleAuthProvider,
+  signInWithPopup, GoogleAuthProvider,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { X } from "lucide-react";
@@ -45,7 +45,8 @@ export function WelcomeGate() {
       if (!auth) { openEmail(); return; }
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
+      dismiss();
     } catch {
       setGoogleLoading(false);
     }

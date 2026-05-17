@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithRedirect, getRedirectResult, GoogleAuthProvider, updateProfile, sendPasswordResetEmail,
+  signInWithPopup, GoogleAuthProvider, updateProfile, sendPasswordResetEmail,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -75,12 +75,14 @@ export function AuthModal() {
       if (!auth) { setError("Auth not configured"); return; }
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
-      // Page will redirect — result is handled in AuthProvider via getRedirectResult
+      await signInWithPopup(auth, provider);
+      setShowLogin(false);
+      consumeRedirect(router);
     } catch (e: unknown) {
       const code = (e as { code?: string }).code ?? "";
       const msg = friendly(code);
       if (msg) setError(msg);
+    } finally {
       setLoading(false);
     }
   }
