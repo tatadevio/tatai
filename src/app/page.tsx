@@ -98,10 +98,11 @@ function fileTypeInfo(mime = "", fileName = "") {
   return { label: ext.toUpperCase() || "File", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📎" };
 }
 
-function MessageActions({ text, onRegenerate, isLast, sessionId }: { text: string; onRegenerate?: () => void; isLast?: boolean; sessionId?: string | null }) {
+function MessageActions({ text, onRegenerate, isLast, sessionId, getMessages }: { text: string; onRegenerate?: () => void; isLast?: boolean; sessionId?: string | null; getMessages?: () => { role: string; content: string }[] }) {
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<"up" | "down" | null>(null);
   const [shared, setShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   function copy() {
     navigator.clipboard.writeText(text);
@@ -109,17 +110,29 @@ function MessageActions({ text, onRegenerate, isLast, sessionId }: { text: strin
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function share() {
-    const url = sessionId
-      ? `${window.location.origin}/?chat=${sessionId}`
-      : window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
+  async function share() {
+    setSharing(true);
+    try {
+      const msgs = getMessages?.() ?? [];
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: msgs, title: msgs[0]?.content?.slice(0, 60) || "Shared Chat" }),
+      });
+      const data = await res.json();
+      const url = data.url ? `${window.location.origin}${data.url}` : window.location.href;
+      if (navigator.share) {
+        navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(url);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      }
+    } catch {
+      navigator.clipboard.writeText(window.location.href);
       setShared(true);
       setTimeout(() => setShared(false), 2000);
-    }
+    } finally { setSharing(false); }
   }
 
   const btn = "p-1.5 rounded-lg text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-all active:scale-95";
@@ -140,8 +153,8 @@ function MessageActions({ text, onRegenerate, isLast, sessionId }: { text: strin
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       )}
-      <button onClick={share} title="Share" className={btn}>
-        {shared ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Share2 className="w-3.5 h-3.5" />}
+      <button onClick={share} title="Share" className={btn} disabled={sharing}>
+        {shared ? <Check className="w-3.5 h-3.5 text-green-500" /> : sharing ? <span className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin inline-block" /> : <Share2 className="w-3.5 h-3.5" />}
       </button>
     </div>
   );
@@ -672,11 +685,27 @@ export default function Home() {
     setRenamingId(null);
   }
 
-  function shareSession(id: string) {
-    const url = `${window.location.origin}/?chat=${id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCtxMenu(null);
-    });
+  async function shareSession(id: string) {
+    setCtxMenu(null);
+    try {
+      const saved = localStorage.getItem(`tatai_msgs_${user?.uid}_${id}`);
+      const msgs = saved ? JSON.parse(saved) : [];
+      const session = sessions.find(s => s.id === id);
+      const plainMsgs = msgs.map((m: {role:string; parts?: {type:string;text?:string}[]; content?: string}) => ({
+        role: m.role,
+        content: m.parts?.filter((p: {type:string}) => p.type === "text").map((p: {type:string;text?:string}) => p.text ?? "").join("") ?? m.content ?? "",
+      }));
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: plainMsgs, title: session?.title || "Shared Chat" }),
+      });
+      const data = await res.json();
+      const url = data.url ? `${window.location.origin}${data.url}` : `${window.location.origin}/?chat=${id}`;
+      navigator.clipboard.writeText(url);
+    } catch {
+      navigator.clipboard.writeText(`${window.location.origin}/?chat=${id}`);
+    }
   }
 
   function closeSidebarOnMobile() {
@@ -1058,6 +1087,10 @@ export default function Home() {
                           isLast={m.id === messages[messages.length - 1]?.id}
                           onRegenerate={regenerateLast}
                           sessionId={activeSession}
+                          getMessages={() => messages.map(msg => ({
+                            role: msg.role,
+                            content: msg.parts?.filter((p: {type:string}) => p.type === "text").map((p: {type:string;text?:string}) => p.type === "text" ? p.text ?? "" : "").join("") ?? "",
+                          }))}
                         />
                       </div>
                     )}
