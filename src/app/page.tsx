@@ -118,7 +118,8 @@ export default function Home() {
   const router = useRouter();
   const { user, logout, setShowLogin } = useAuth();
   const [input, setInput] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -130,6 +131,18 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Detect mobile and set initial sidebar state
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setSidebarOpen(!mobile);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   // Load sessions from localStorage on mount
   useEffect(() => {
@@ -264,11 +277,28 @@ export default function Home() {
     } catch {}
   }
 
+  function closeSidebarOnMobile() {
+    if (isMobile) setSidebarOpen(false);
+  }
+
   return (
-    <div className="flex h-full bg-white dark:bg-[#212121]">
+    <div className="flex h-full bg-white dark:bg-[#212121] overflow-hidden">
+
+      {/* ── Mobile backdrop ── */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ── Sidebar ── */}
-      <aside className={`${sidebarOpen ? "w-[260px]" : "w-0"} transition-all duration-200 overflow-hidden flex-shrink-0 flex flex-col bg-neutral-50 dark:bg-[#171717]`}>
+      <aside className={`
+        ${isMobile
+          ? `fixed left-0 top-0 bottom-0 z-40 w-[280px] transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
+          : `${sidebarOpen ? "w-[260px]" : "w-0"} transition-all duration-200 overflow-hidden flex-shrink-0`}
+        flex flex-col bg-neutral-50 dark:bg-[#171717] h-full
+      `}>
         {/* Logo + New chat */}
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
@@ -288,7 +318,7 @@ export default function Home() {
           {sessions.map((s) => (
             <div
               key={s.id}
-              onClick={() => loadSession(s.id)}
+              onClick={() => { loadSession(s.id); closeSidebarOnMobile(); }}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors text-left cursor-pointer group ${
                 activeSession === s.id
                   ? "bg-neutral-200 dark:bg-white/[0.08] text-neutral-900 dark:text-white"
@@ -382,18 +412,37 @@ export default function Home() {
       <main className="flex-1 flex flex-col min-w-0 relative bg-white dark:bg-[#212121]">
 
         {/* Top bar */}
-        <header className="flex items-center gap-2 px-4 py-3">
+        <header className="flex items-center gap-2 px-3 py-2.5 border-b border-neutral-100 dark:border-white/[0.04]">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40"
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40 flex-shrink-0"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
-          {!sidebarOpen && (
-            <>
-              <TataILogo className="w-6 h-6 ml-1" />
+
+          {/* Mobile: center logo */}
+          {isMobile ? (
+            <div className="flex-1 flex items-center justify-center gap-2">
+              <TataILogo className="w-6 h-6" />
               <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataI</span>
-            </>
+            </div>
+          ) : (
+            !sidebarOpen && (
+              <div className="flex items-center gap-2 ml-1">
+                <TataILogo className="w-6 h-6" />
+                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tataI</span>
+              </div>
+            )
+          )}
+
+          {/* Mobile: new chat button on right */}
+          {isMobile && (
+            <button
+              onClick={() => { newChat(); closeSidebarOnMobile(); }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40 flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           )}
         </header>
 
@@ -401,21 +450,23 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
             /* ── Welcome screen ── */
-            <div className="flex flex-col items-center justify-center min-h-full px-4 pb-32">
-              <TataILogo className="w-12 h-12 mb-5" />
-              <h1 className="text-[26px] font-semibold text-neutral-900 dark:text-white mb-1">How can I help you?</h1>
-              <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-10">tataI is your personal AI assistant</p>
-              <div className="grid grid-cols-2 gap-3 w-full max-w-[560px]">
+            <div className="flex flex-col items-center justify-center min-h-full px-4 pb-36 pt-8">
+              <TataILogo className="w-10 h-10 sm:w-12 sm:h-12 mb-4" />
+              <h1 className="text-[22px] sm:text-[26px] font-semibold text-neutral-900 dark:text-white mb-1 text-center">How can I help you?</h1>
+              <p className="text-neutral-500 dark:text-neutral-400 text-sm mb-8 text-center">tataI is your personal AI assistant</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-[560px]">
                 {SUGGESTIONS.map(({ icon: Icon, label, desc, prompt }) => (
                   <button
                     key={label}
                     onClick={() => { const id = Date.now().toString(); setSessions((p) => [{ id, title: prompt.slice(0, 40) }, ...p]); setActiveSession(id); sendMessage({ text: prompt }); }}
-                    className="flex items-start gap-3 p-4 rounded-2xl border border-neutral-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.06] hover:border-neutral-300 dark:hover:border-white/[0.14] transition-all text-left group"
+                    className="flex items-center gap-3 p-3.5 rounded-2xl border border-neutral-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.06] hover:border-neutral-300 dark:hover:border-white/[0.14] active:scale-[0.98] transition-all text-left group"
                   >
-                    <Icon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 mt-0.5 flex-shrink-0 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                    <div className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-white/[0.06] flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 dark:group-hover:bg-blue-500/10 transition-colors">
+                      <Icon className="w-4 h-4 text-neutral-500 dark:text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                    </div>
                     <div>
                       <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{label}</p>
-                      <p className="text-[12px] text-neutral-400 dark:text-white/30 mt-0.5">{desc}</p>
+                      <p className="text-[12px] text-neutral-400 dark:text-white/30">{desc}</p>
                     </div>
                   </button>
                 ))}
@@ -423,15 +474,15 @@ export default function Home() {
             </div>
           ) : (
             /* ── Conversation ── */
-            <div className="max-w-[760px] mx-auto px-4 py-6 space-y-6">
+            <div className="max-w-[760px] mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-5 sm:space-y-6">
               {messages.map((m) => (
-                <div key={m.id} className={`flex gap-4 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                <div key={m.id} className={`flex gap-2.5 sm:gap-4 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                   {/* Avatar */}
                   {m.role === "assistant" ? (
-                    <TataILogo className="w-8 h-8 flex-shrink-0 mt-1" />
+                    <TataILogo className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 mt-1" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-neutral-800 dark:bg-neutral-600 flex items-center justify-center flex-shrink-0 mt-1">
-                      <User className="w-4 h-4 text-white" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-neutral-800 dark:bg-neutral-600 flex items-center justify-center flex-shrink-0 mt-1">
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                     </div>
                   )}
 
@@ -489,7 +540,7 @@ export default function Home() {
         </div>
 
         {/* ── Input bar ── */}
-        <div className={`px-4 pb-6 pt-2 ${messages.length === 0 ? "absolute bottom-0 left-0 right-0" : ""}`}>
+        <div className={`px-3 sm:px-4 pb-4 sm:pb-6 pt-2 ${messages.length === 0 ? "absolute bottom-0 left-0 right-0" : ""}`}>
           <div className="max-w-[760px] mx-auto">
             <div className="bg-white dark:bg-[#2f2f2f] border border-neutral-200 dark:border-neutral-600 rounded-2xl shadow-sm dark:shadow-none focus-within:border-neutral-400 dark:focus-within:border-neutral-400 transition-colors">
 
@@ -576,10 +627,11 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setModelDropOpen(v => !v)}
-                      className="flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-700 dark:hover:text-white transition-colors border border-transparent hover:border-neutral-200 dark:hover:border-white/[0.08]"
+                      className="flex items-center gap-1.5 pl-2 sm:pl-2.5 pr-1.5 sm:pr-2 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-700 dark:hover:text-white transition-colors active:scale-95"
                     >
-                      <activeModelDef.icon className={`w-3.5 h-3.5 ${activeModelDef.color}`} />
-                      {activeModelDef.name}
+                      <activeModelDef.icon className={`w-3.5 h-3.5 flex-shrink-0 ${activeModelDef.color}`} />
+                      <span className="hidden sm:inline">{activeModelDef.name}</span>
+                      <span className="sm:hidden">{activeModelDef.name.replace("tataI ", "")}</span>
                       <ChevronDown className="w-3 h-3 opacity-50" />
                     </button>
 
