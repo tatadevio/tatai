@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { ArrowLeft, Sparkles, Zap, Shield, Globe } from "lucide-react";
 import Link from "next/link";
 import { TataILogo } from "@/components/Logo";
+
+export const metadata: Metadata = {
+  title: "About tataI",
+  description: "Learn about tataI — the AI assistant built by tatadev LLC to make AI accessible and powerful for everyone.",
+};
 
 export default function AboutPage() {
   return (

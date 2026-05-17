@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
@@ -8,20 +8,123 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
+const APP_URL = "https://www.tatai.cloud";
+const APP_NAME = "tataI";
+const APP_TITLE = "tataI — Your AI Assistant";
+const APP_DESC =
+  "tataI is a powerful AI assistant built by tatadev LLC. Write code, research topics, draft content, and brainstorm ideas — all with one smart AI.";
+const APP_KEYWORDS = [
+  "AI assistant",
+  "artificial intelligence",
+  "chatbot",
+  "AI chat",
+  "ChatGPT alternative",
+  "tataI",
+  "tatadev",
+  "write code with AI",
+  "AI for productivity",
+  "smart AI",
+  "AI brainstorm",
+  "AI writing assistant",
+  "free AI tool",
+  "GPT alternative",
+  "best AI assistant 2026",
+].join(", ");
+
 export const metadata: Metadata = {
-  title: "tataI — Your AI Assistant",
-  description: "tataI: a powerful AI assistant for everyone.",
+  metadataBase: new URL(APP_URL),
+
+  title: {
+    default: APP_TITLE,
+    template: `%s — ${APP_NAME}`,
+  },
+  description: APP_DESC,
+  keywords: APP_KEYWORDS,
+  authors: [{ name: "tatadev LLC", url: APP_URL }],
+  creator: "tatadev LLC",
+  publisher: "tatadev LLC",
+
+  // Canonical + robots
+  alternates: { canonical: APP_URL },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+
+  // Open Graph (Facebook, LinkedIn, WhatsApp previews)
+  openGraph: {
+    type: "website",
+    url: APP_URL,
+    siteName: APP_NAME,
+    title: APP_TITLE,
+    description: APP_DESC,
+    images: [
+      {
+        url: `${APP_URL}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: APP_TITLE,
+      },
+    ],
+    locale: "en_US",
+  },
+
+  // Twitter / X card
+  twitter: {
+    card: "summary_large_image",
+    site: "@tataicloud",
+    creator: "@tataicloud",
+    title: APP_TITLE,
+    description: APP_DESC,
+    images: [`${APP_URL}/opengraph-image`],
+  },
+
+  // App metadata
+  applicationName: APP_NAME,
+  category: "technology",
+
+  // Icons (Next.js auto-picks icon.svg / apple-icon.svg from /app)
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+  },
+
+  manifest: "/manifest.webmanifest",
+
+  // Verification (add your codes once you verify in Google Search Console etc.)
+  // verification: { google: "YOUR_GOOGLE_SITE_VERIFICATION" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Preconnect for speed */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://api.openai.com" />
+      </head>
       <body className="h-full bg-white dark:bg-[#0a0a0a] text-neutral-900 dark:text-white transition-colors">
         <ThemeProvider>
           <AuthProvider>

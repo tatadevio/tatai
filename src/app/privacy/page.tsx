@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { TataILogo } from "@/components/Logo";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "Read tataI's privacy policy to understand how we collect, use, and protect your data.",
+};
 
 export default function PrivacyPage() {
   const sections = [

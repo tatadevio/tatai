@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { TataILogo } from "@/components/Logo";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "Read the Terms of Service for tataI, the AI assistant by tatadev LLC.",
+};
 
 export default function TermsPage() {
   const sections = [
