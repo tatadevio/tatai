@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import {
   Send, Plus, Code, FileText, Search, Zap, Crown,
   MessageSquare, Settings, Info, Shield, FileTerminal,
-  PanelLeft, Copy, Check, User,
+  PanelLeft, Copy, Check, User, ChevronUp, LogIn,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -87,6 +87,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -168,24 +169,42 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Bottom links */}
-        <div className="px-2 py-2 border-t border-neutral-200 dark:border-white/[0.06]">
-          {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
-            <button
-              key={label}
-              onClick={() => router.push(href)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left"
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
+        {/* Bottom — collapsible menu + login */}
+        <div className="border-t border-neutral-200 dark:border-white/[0.06]">
+          {/* Expandable menu items */}
+          {menuOpen && (
+            <div className="px-2 pt-2">
+              {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
+                <button
+                  key={label}
+                  onClick={() => router.push(href)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left"
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+              <button
+                onClick={() => router.push("/upgrade")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                Upgrade to Pro
+              </button>
+              <div className="h-1" />
+            </div>
+          )}
+
+          {/* Login row with arrow toggle */}
           <button
-            onClick={() => router.push("/upgrade")}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
           >
-            <Crown className="w-3.5 h-3.5" />
-            Upgrade to Pro
+            <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0">
+              <LogIn className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+            </div>
+            <span className="flex-1 text-[13px] font-medium text-neutral-700 dark:text-white/60 text-left">Log in</span>
+            <ChevronUp className={`w-4 h-4 text-neutral-400 dark:text-white/30 transition-transform duration-200 ${menuOpen ? "rotate-0" : "rotate-180"}`} />
           </button>
         </div>
       </aside>
