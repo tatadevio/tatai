@@ -6,6 +6,7 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Sparkles, Check, Zap, ArrowLeft, Shield, Infinity } from "lucide-react";
+import { TataILogo } from "@/components/Logo";
 
 const FREE_FEATURES = [
   "10 messages per day",
@@ -48,48 +49,43 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-screen bg-neutral-50 dark:bg-[#0a0a0a] flex flex-col">
       {/* Header */}
-      <header className="flex items-center gap-3 px-6 py-5 border-b border-white/[0.06]">
-        <button
-          onClick={() => router.push("/")}
-          className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm"
-        >
+      <header className="flex items-center gap-3 px-6 py-4 border-b border-neutral-200 dark:border-white/[0.06] bg-white dark:bg-[#111]">
+        <button onClick={() => router.push("/")} className="flex items-center gap-2 text-neutral-500 dark:text-white/40 hover:text-neutral-800 dark:hover:text-white transition-colors text-sm">
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
         <div className="flex items-center gap-2 mx-auto">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="font-bold text-white tracking-tight">tataI</span>
+          <TataILogo className="w-7 h-7" />
+          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataI</span>
         </div>
         <div className="w-14" />
       </header>
 
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-center p-6 bg-neutral-50 dark:bg-[#0a0a0a]">
         <div className="w-full max-w-3xl">
           {success ? (
             <div className="text-center py-20">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-green-500/30">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-green-500/30">
                 <Check className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">Welcome to Pro!</h2>
-              <p className="text-white/40 text-[15px]">You now have unlimited access to tataI.</p>
-              <p className="text-white/25 text-sm mt-2">Redirecting you back...</p>
+              <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3">Welcome to Pro!</h2>
+              <p className="text-neutral-500 dark:text-white/40 text-[15px]">You now have unlimited access to tataI.</p>
+              <p className="text-neutral-400 dark:text-white/25 text-sm mt-2">Redirecting you back...</p>
             </div>
           ) : (
             <>
               {/* Hero */}
               <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-1.5 mb-5">
-                  <Zap className="w-3.5 h-3.5 text-violet-400" />
-                  <span className="text-violet-400 text-sm font-medium">Simple pricing</span>
+                <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-full px-4 py-1.5 mb-5">
+                  <Zap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span className="text-blue-600 dark:text-blue-400 text-sm font-medium">Simple pricing</span>
                 </div>
-                <h1 className="text-[36px] font-bold text-white mb-3 tracking-tight">
+                <h1 className="text-[36px] font-bold text-neutral-900 dark:text-white mb-3 tracking-tight">
                   Unlock the full power of tataI
                 </h1>
-                <p className="text-white/40 text-[16px] max-w-md mx-auto">
+                <p className="text-neutral-500 dark:text-white/40 text-[16px] max-w-md mx-auto">
                   Upgrade to Pro and get unlimited AI conversations, faster responses, and priority support.
                 </p>
               </div>
@@ -97,18 +93,18 @@ export default function UpgradePage() {
               {/* Cards */}
               <div className="grid grid-cols-2 gap-5">
                 {/* Free */}
-                <div className="bg-white/[0.03] border border-white/[0.08] rounded-3xl p-7">
+                <div className="bg-white dark:bg-white/[0.03] border border-neutral-200 dark:border-white/[0.08] rounded-3xl p-7">
                   <div className="mb-6">
-                    <p className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-3">Free</p>
+                    <p className="text-neutral-400 dark:text-white/40 text-xs font-semibold uppercase tracking-widest mb-3">Free</p>
                     <div className="flex items-end gap-1.5">
-                      <span className="text-4xl font-bold text-white">$0</span>
-                      <span className="text-white/30 text-sm mb-1.5">/ month</span>
+                      <span className="text-4xl font-bold text-neutral-900 dark:text-white">$0</span>
+                      <span className="text-neutral-400 dark:text-white/30 text-sm mb-1.5">/ month</span>
                     </div>
                   </div>
                   <ul className="space-y-3 mb-8">
                     {FREE_FEATURES.map((f) => (
-                      <li key={f} className="flex items-center gap-3 text-sm text-white/40">
-                        <div className="w-5 h-5 rounded-full border border-white/[0.12] flex items-center justify-center flex-shrink-0">
+                      <li key={f} className="flex items-center gap-3 text-sm text-neutral-400 dark:text-white/40">
+                        <div className="w-5 h-5 rounded-full border border-neutral-200 dark:border-white/[0.12] flex items-center justify-center flex-shrink-0">
                           <Check className="w-3 h-3" />
                         </div>
                         {f}
@@ -117,7 +113,7 @@ export default function UpgradePage() {
                   </ul>
                   <button
                     onClick={() => router.push("/")}
-                    className="w-full py-3 rounded-xl border border-white/[0.1] text-white/40 text-sm font-medium hover:bg-white/[0.04] transition-colors"
+                    className="w-full py-3 rounded-xl border border-neutral-200 dark:border-white/[0.1] text-neutral-400 dark:text-white/40 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors"
                   >
                     Current plan
                   </button>
@@ -180,7 +176,7 @@ export default function UpgradePage() {
                   { icon: Zap, text: "Instant activation" },
                   { icon: Check, text: "Cancel anytime" },
                 ].map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-center gap-2 text-white/25 text-xs">
+                  <div key={text} className="flex items-center gap-2 text-neutral-400 dark:text-white/25 text-xs">
                     <Icon className="w-3.5 h-3.5" />
                     {text}
                   </div>
