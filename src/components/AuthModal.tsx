@@ -59,7 +59,10 @@ export function AuthModal() {
     try {
       const auth = getFirebaseAuth();
       if (!auth) { setError("Auth not configured"); return; }
-      await sendPasswordResetEmail(auth, email.trim());
+      await sendPasswordResetEmail(auth, email.trim(), {
+        url: "https://www.tatai.cloud",
+        handleCodeInApp: false,
+      });
       setResetSent(true);
     } catch (e: unknown) {
       setError(friendly((e as { code?: string }).code ?? ""));
