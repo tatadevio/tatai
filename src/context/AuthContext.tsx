@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 interface AuthContextType {
   user: User | null;
@@ -26,15 +26,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    try {
+      const firebaseAuth = getFirebaseAuth();
+      const unsub = onAuthStateChanged(firebaseAuth, (u) => {
+        setUser(u);
+        setLoading(false);
+      });
+      return unsub;
+    } catch {
       setLoading(false);
-    });
-    return unsub;
+    }
   }, []);
 
   async function logout() {
-    await signOut(auth);
+    try {
+      await signOut(getFirebaseAuth());
+    } catch {}
   }
 
   return (

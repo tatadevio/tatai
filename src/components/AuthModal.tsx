@@ -6,7 +6,7 @@ import {
   signInWithPopup, GithubAuthProvider,
   signInWithPhoneNumber, RecaptchaVerifier, ConfirmationResult,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { X, Mail, Phone, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { TataILogo } from "./Logo";
@@ -61,10 +61,11 @@ export function AuthModal() {
     e.preventDefault();
     setLoading(true); setError("");
     try {
+      const firebaseAuth = getFirebaseAuth();
       if (emailMode === "signin") {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(firebaseAuth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(firebaseAuth, email, password);
       }
       setShowLogin(false);
     } catch (err: unknown) {
@@ -75,7 +76,7 @@ export function AuthModal() {
   async function handleGithub() {
     setLoading(true); setError("");
     try {
-      await signInWithPopup(auth, new GithubAuthProvider());
+      await signInWithPopup(getFirebaseAuth(), new GithubAuthProvider());
       setShowLogin(false);
     } catch (err: unknown) {
       setError(friendlyError((err as {code: string}).code));
@@ -86,10 +87,11 @@ export function AuthModal() {
     e.preventDefault();
     setLoading(true); setError("");
     try {
+      const firebaseAuth = getFirebaseAuth();
       if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current!, { size: "invisible" });
+        window.recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, recaptchaRef.current!, { size: "invisible" });
       }
-      const result = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+      const result = await signInWithPhoneNumber(firebaseAuth, phone, window.recaptchaVerifier);
       setConfirmResult(result);
       setOtpSent(true);
     } catch (err: unknown) {
