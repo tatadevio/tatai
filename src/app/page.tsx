@@ -8,13 +8,46 @@ import {
   Send, Plus, Code, FileText, Search, Zap, Crown,
   MessageSquare, Settings, Info, Shield, FileTerminal,
   PanelLeft, Copy, Check, User, ChevronUp, LogIn, LogOut,
-  Paperclip, Image as ImageIcon, X as XIcon, File,
+  Paperclip, Image as ImageIcon, X as XIcon, File, ChevronDown,
+  Zap as ZapIcon, Brain, Sparkles,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TataILogo } from "@/components/Logo";
 import { CodeBlock } from "@/components/CodeBlock";
 import { useAuth } from "@/context/AuthContext";
+
+const TATAI_MODELS = [
+  {
+    id: "tatai-flash",
+    name: "tataI Flash",
+    desc: "Quick responses",
+    apiModel: "gpt-4o-mini",
+    icon: ZapIcon,
+    color: "text-yellow-500",
+    badge: "Fast",
+  },
+  {
+    id: "tatai-smart",
+    name: "tataI Smart",
+    desc: "Best for most tasks",
+    apiModel: "gpt-4o",
+    icon: Sparkles,
+    color: "text-blue-500",
+    badge: "Default",
+  },
+  {
+    id: "tatai-think",
+    name: "tataI Think",
+    desc: "Deep reasoning",
+    apiModel: "o4-mini",
+    icon: Brain,
+    color: "text-violet-500",
+    badge: "Pro",
+  },
+] as const;
+
+type ModelId = typeof TATAI_MODELS[number]["id"];
 
 const SUGGESTIONS = [
   { icon: Code, label: "Write code", desc: "Debug, build, explain", prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
@@ -91,6 +124,8 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachPreviews, setAttachPreviews] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<ModelId>("tatai-smart");
+  const [modelDropOpen, setModelDropOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -104,8 +139,13 @@ export default function Home() {
     } catch {}
   }, []);
 
+  const activeModelDef = TATAI_MODELS.find(m => m.id === selectedModel) ?? TATAI_MODELS[1];
+
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: { model: activeModelDef.apiModel },
+    }),
   });
 
   const isLoading = status === "streaming" || status === "submitted";
@@ -531,7 +571,62 @@ export default function Home() {
                   >
                     <ImageIcon className="w-4 h-4" />
                   </button>
+
+                  {/* Model selector */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setModelDropOpen(v => !v)}
+                      className="flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-700 dark:hover:text-white transition-colors border border-transparent hover:border-neutral-200 dark:hover:border-white/[0.08]"
+                    >
+                      <activeModelDef.icon className={`w-3.5 h-3.5 ${activeModelDef.color}`} />
+                      {activeModelDef.name}
+                      <ChevronDown className="w-3 h-3 opacity-50" />
+                    </button>
+
+                    {modelDropOpen && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setModelDropOpen(false)} />
+                        <div className="absolute bottom-full mb-2 left-0 z-40 w-[220px] bg-white dark:bg-[#1e1e1e] border border-neutral-200 dark:border-white/[0.08] rounded-2xl shadow-xl overflow-hidden">
+                          <div className="px-3 py-2 border-b border-neutral-100 dark:border-white/[0.05]">
+                            <p className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Choose model</p>
+                          </div>
+                          {TATAI_MODELS.map((m) => {
+                            const Icon = m.icon;
+                            const isActive = m.id === selectedModel;
+                            return (
+                              <button
+                                key={m.id}
+                                onClick={() => { setSelectedModel(m.id); setModelDropOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left hover:bg-neutral-50 dark:hover:bg-white/[0.05] ${isActive ? "bg-neutral-50 dark:bg-white/[0.04]" : ""}`}
+                              >
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  m.id === "tatai-flash" ? "bg-yellow-50 dark:bg-yellow-400/10" :
+                                  m.id === "tatai-smart" ? "bg-blue-50 dark:bg-blue-400/10" :
+                                  "bg-violet-50 dark:bg-violet-400/10"
+                                }`}>
+                                  <Icon className={`w-3.5 h-3.5 ${m.color}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{m.name}</p>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                      m.badge === "Fast" ? "bg-yellow-100 dark:bg-yellow-400/10 text-yellow-600 dark:text-yellow-400" :
+                                      m.badge === "Default" ? "bg-blue-100 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400" :
+                                      "bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400"
+                                    }`}>{m.badge}</span>
+                                  </div>
+                                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{m.desc}</p>
+                                </div>
+                                {isActive && <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
+
                 <button
                   onClick={handleSend}
                   disabled={(!input.trim() && attachments.length === 0) || isLoading}

@@ -3,8 +3,15 @@ import { convertToModelMessages, streamText, UIMessage } from "ai";
 
 export const maxDuration = 60;
 
+const ALLOWED_MODELS: Record<string, string> = {
+  "gpt-4o-mini": "gpt-4o-mini",
+  "gpt-4o": "gpt-4o",
+  "o4-mini": "o4-mini",
+};
+
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, model: requestedModel }: { messages: UIMessage[]; model?: string } = await req.json();
+  const resolvedModel = ALLOWED_MODELS[requestedModel ?? ""] ?? "gpt-4o";
 
   // Verify Firebase ID token if Supabase is configured (full auth enforcement mode)
   const firebaseConfigured = !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -36,7 +43,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: openai(resolvedModel),
     system: `You are tataI, an AI assistant created and developed exclusively by tatadev LLC.
 
 IDENTITY RULES — never break these:
