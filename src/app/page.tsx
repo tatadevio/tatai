@@ -14,6 +14,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TataILogo } from "@/components/Logo";
+import { CodeBlock } from "@/components/CodeBlock";
 
 const SUGGESTIONS = [
   { icon: Code, label: "Write code", desc: "Debug, build, explain", prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
@@ -59,18 +60,7 @@ function MessageContent({ content }: { content: string }) {
           const isBlock = className?.includes("language-");
           if (isBlock) {
             const lang = className?.replace("language-", "") ?? "";
-            const codeText = String(children).trim();
-            return (
-              <div className="my-3 rounded-xl overflow-hidden border border-neutral-200 dark:border-white/[0.08]">
-                <div className="flex items-center justify-between bg-neutral-100 dark:bg-white/[0.05] px-4 py-2 border-b border-neutral-200 dark:border-white/[0.08]">
-                  <span className="text-xs font-mono text-neutral-500 dark:text-white/40">{lang || "code"}</span>
-                  <CopyButton text={codeText} />
-                </div>
-                <pre className="bg-neutral-50 dark:bg-[#1a1a1a] p-4 overflow-x-auto text-[13px] leading-relaxed">
-                  <code className="font-mono text-neutral-800 dark:text-neutral-200">{codeText}</code>
-                </pre>
-              </div>
-            );
+            return <CodeBlock lang={lang}>{String(children).trim()}</CodeBlock>;
           }
           return <code className="font-mono text-[13px] bg-neutral-100 dark:bg-white/[0.08] px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400">{children}</code>;
         },
