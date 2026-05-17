@@ -13,17 +13,17 @@ const inter = Inter({
 });
 
 const APP_URL = "https://www.tatai.cloud";
-const APP_NAME = "tataI";
-const APP_TITLE = "tataI — Your AI Assistant";
+const APP_NAME = "tataAI";
+const APP_TITLE = "tataAI — Your AI Assistant";
 const APP_DESC =
-  "tataI is a powerful AI assistant built by tatadev LLC. Write code, research topics, draft content, and brainstorm ideas — all with one smart AI.";
+  "tataAI is a powerful AI assistant built by tatadev LLC. Write code, research topics, draft content, and brainstorm ideas — all with one smart AI.";
 const APP_KEYWORDS = [
   "AI assistant",
   "artificial intelligence",
   "chatbot",
   "AI chat",
   "ChatGPT alternative",
-  "tataI",
+  "tataAI",
   "tatadev",
   "write code with AI",
   "AI for productivity",

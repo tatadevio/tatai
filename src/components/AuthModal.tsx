@@ -225,7 +225,7 @@ export function AuthModal() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             <TataILogo className="w-7 h-7" />
-            <span className="font-bold text-[15px] text-neutral-900 dark:text-white">Sign in to tataI</span>
+            <span className="font-bold text-[15px] text-neutral-900 dark:text-white">Sign in to tataAI</span>
           </div>
           <button onClick={() => setShowLogin(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] text-neutral-400 transition-colors">
             <X className="w-4 h-4" />

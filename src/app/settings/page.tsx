@@ -60,7 +60,7 @@ export default function SettingsPage() {
         </button>
         <div className="flex items-center gap-2">
           <TataILogo className="w-6 h-6" />
-          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataI</span>
+          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataAI</span>
         </div>
         <span className="text-neutral-400 dark:text-white/30">/</span>
         <h1 className="font-semibold text-neutral-900 dark:text-white">Settings</h1>
@@ -137,7 +137,7 @@ export default function SettingsPage() {
         {/* Links */}
         <section className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/[0.07] rounded-2xl overflow-hidden divide-y divide-neutral-100 dark:divide-white/[0.05]">
           {[
-            { label: "About tataI", href: "/about" },
+            { label: "About tataAI", href: "/about" },
             { label: "Privacy Policy", href: "/privacy" },
             { label: "Terms of Service", href: "/terms" },
           ].map(({ label, href }) => (

@@ -16,14 +16,14 @@ const PayPalBox = dynamic(() => import("@/components/PayPalBox"), {
 
 const FREE_FEATURES = [
   "20 messages per day",
-  "tataI Zara & Nova models",
+  "tataAI Zara & Nova models",
   "File & image uploads",
   "Web browsing",
 ];
 
 const PRO_FEATURES = [
   { text: "Unlimited messages", icon: Infinity },
-  { text: "tataI Orion — deep reasoning", icon: Crown },
+  { text: "tataAI Orion — deep reasoning", icon: Crown },
   { text: "Faster responses", icon: Zap },
   { text: "Priority support", icon: Shield },
   { text: "All future features", icon: Sparkles },
@@ -43,7 +43,7 @@ export default function UpgradePage() {
         </button>
         <div className="flex items-center gap-2 mx-auto">
           <TataILogo className="w-7 h-7" />
-          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataI</span>
+          <span className="font-bold text-neutral-900 dark:text-white tracking-tight">tataAI</span>
         </div>
         <div className="w-14" />
       </header>
@@ -56,7 +56,7 @@ export default function UpgradePage() {
                 <Check className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3">Welcome to Pro!</h2>
-              <p className="text-neutral-500 dark:text-white/40 text-[15px]">You now have unlimited access to tataI.</p>
+              <p className="text-neutral-500 dark:text-white/40 text-[15px]">You now have unlimited access to tataAI.</p>
               <p className="text-neutral-400 dark:text-white/25 text-sm mt-2">Redirecting you back…</p>
             </div>
           ) : (
@@ -67,7 +67,7 @@ export default function UpgradePage() {
                   <span className="text-violet-600 dark:text-violet-400 text-sm font-medium">Simple pricing</span>
                 </div>
                 <h1 className="text-[32px] sm:text-[38px] font-bold text-neutral-900 dark:text-white mb-3 tracking-tight">
-                  Unlock the full power of tataI
+                  Unlock the full power of tataAI
                 </h1>
                 <p className="text-neutral-500 dark:text-white/40 text-[15px] max-w-md mx-auto">
                   Upgrade to Pro for unlimited AI conversations, Orion deep reasoning, and priority support.

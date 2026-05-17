@@ -17,7 +17,7 @@ function downloadFile(content: string, lang: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `tataI-code.${ext}`;
+  a.download = `tataAI-code.${ext}`;
   a.click();
   URL.revokeObjectURL(url);
 }
