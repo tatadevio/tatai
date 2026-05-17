@@ -135,5 +135,15 @@ WEB BROWSING:
     messages: await convertToModelMessages(messages),
   });
 
-  return result.toUIMessageStreamResponse();
+  // Strip headers that reveal underlying technology
+  const raw = result.toUIMessageStreamResponse();
+  const clean = new Response(raw.body, {
+    status: raw.status,
+    headers: {
+      "Content-Type": raw.headers.get("Content-Type") ?? "text/event-stream",
+      "Cache-Control": "no-cache",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+  return clean;
 }

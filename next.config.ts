@@ -1,7 +1,37 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Hide Next.js version header
+  poweredByHeader: false,
+
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          // Remove headers that reveal the tech stack
+          { key: "X-Powered-By", value: "" },
+          { key: "Server", value: "tatai" },
+          // Security headers
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      {
+        // For API routes, remove all AI SDK / Vercel trace headers
+        source: "/api/(.*)",
+        headers: [
+          { key: "X-Vercel-Ai-Ui-Message-Stream", value: "" },
+          { key: "X-Matched-Path", value: "" },
+          { key: "X-Vercel-Cache", value: "" },
+          { key: "X-Vercel-Id", value: "" },
+          { key: "X-Accel-Buffering", value: "" },
+          { key: "Server", value: "tatai" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
