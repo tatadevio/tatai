@@ -18,7 +18,12 @@ export function WelcomeGate() {
 
   useEffect(() => {
     if (loading) return;
-    if (user) { setVisible(false); return; }
+    if (user) {
+      // User just logged in (e.g. via Google redirect) — hide gate and mark seen
+      localStorage.setItem(SEEN_KEY, "1");
+      setVisible(false);
+      return;
+    }
     const seen = localStorage.getItem(SEEN_KEY);
     if (!seen) setVisible(true);
   }, [user, loading]);

@@ -26,18 +26,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
-    try {
-      const firebaseAuth = getFirebaseAuth();
-      // Handle Google redirect result when returning from OAuth
-      getRedirectResult(firebaseAuth).catch(() => {});
-      const unsub = onAuthStateChanged(firebaseAuth, (u) => {
-        setUser(u);
+    let unsub: (() => void) | undefined;
+    (async () => {
+      try {
+        const firebaseAuth = getFirebaseAuth();
+
+        // Process Google redirect result first, THEN subscribe to auth state
+        try {
+          const result = await getRedirectResult(firebaseAuth);
+          if (result?.user) {
+            setUser(result.user);
+            setLoading(false);
+          }
+        } catch {}
+
+        unsub = onAuthStateChanged(firebaseAuth, (u) => {
+          setUser(u);
+          setLoading(false);
+        });
+      } catch {
         setLoading(false);
-      });
-      return unsub;
-    } catch {
-      setLoading(false);
-    }
+      }
+    })();
+    return () => unsub?.();
   }, []);
 
   async function logout() {
