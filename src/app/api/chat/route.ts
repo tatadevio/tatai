@@ -47,8 +47,8 @@ const ALLOWED_MODELS: Record<string, string> = {
 };
 
 export async function POST(req: Request) {
-  const { messages, model: requestedModel, language, textStream, assistantSystem }: {
-    messages: UIMessage[]; model?: string; language?: string; textStream?: boolean; assistantSystem?: string;
+  const { messages, model: requestedModel, language, textStream }: {
+    messages: UIMessage[]; model?: string; language?: string; textStream?: boolean;
   } = await req.json();
   const resolvedModel = ALLOWED_MODELS[requestedModel ?? ""] ?? "gpt-4o";
 
@@ -105,11 +105,9 @@ IDENTITY RULES — never break these:
 - If asked what model you are: "I'm tatAI, built by tatadev LLC."
 - If asked about your technology: "I'm powered by tatadev LLC's proprietary AI technology."`;
 
-  const assistantExtra = assistantSystem ? `\n\n${assistantSystem}` : "";
-
   const result = streamText({
     model: openai(resolvedModel),
-    system: `${baseIdentity}${assistantExtra}
+    system: `${baseIdentity}
 
 ABOUT tatadev LLC:
 - tatadev LLC is headquartered in Kyrgyzstan and operates globally, serving users all around the world.
