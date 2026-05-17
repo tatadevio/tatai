@@ -9,7 +9,7 @@ import {
   MessageSquare, Settings, Info, Shield, FileTerminal,
   PanelLeft, Copy, Check, User, ChevronUp, LogIn, LogOut,
   Paperclip, Image as ImageIcon, X as XIcon, File, ChevronDown,
-  Zap as ZapIcon, Brain, Sparkles,
+  Zap as ZapIcon, Brain, Sparkles, Mic, MicOff, Volume2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -176,6 +176,16 @@ export default function Home() {
   const [modelDropOpen, setModelDropOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
+
+  // ── Voice ──
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceSpeaking, setVoiceSpeaking] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const synthRef = useRef<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -338,6 +348,97 @@ export default function Home() {
     setAttachments((p) => p.filter((_, idx) => idx !== i));
     setAttachPreviews((p) => p.filter((_, idx) => idx !== i));
   }
+
+  // ── Voice functions ──
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function getSR(): any {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    return w.SpeechRecognition || w.webkitSpeechRecognition || null;
+  }
+
+  function startVoiceMode() {
+    const SR = getSR();
+    if (!SR) { alert("Voice not supported in this browser. Try Chrome."); return; }
+    synthRef.current = window.speechSynthesis;
+    setVoiceActive(true);
+    startListening(SR);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function startListening(SR: any) {
+    const rec = new SR();
+    rec.lang = "auto"; // auto-detect language
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onstart = () => setVoiceListening(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const t = Array.from(e.results).map((r: any) => r[0].transcript).join("");
+      setVoiceTranscript(t);
+    };
+    rec.onend = () => {
+      setVoiceListening(false);
+      setVoiceTranscript(prev => {
+        if (prev.trim()) {
+          sendVoiceMessage(prev.trim());
+        }
+        return "";
+      });
+    };
+    rec.onerror = () => setVoiceListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+  }
+
+  function sendVoiceMessage(text: string) {
+    setInput(text);
+    const sessionId = activeSession ?? Date.now().toString();
+    if (!activeSession) {
+      setSessions(p => [{ id: sessionId, title: text.slice(0, 40) }, ...p]);
+      setActiveSession(sessionId);
+    }
+    sendMessage({ text });
+    setInput("");
+  }
+
+  function stopVoiceMode() {
+    recognitionRef.current?.stop();
+    synthRef.current?.cancel();
+    setVoiceActive(false);
+    setVoiceListening(false);
+    setVoiceTranscript("");
+    setVoiceSpeaking(false);
+  }
+
+  // Speak AI response aloud when in voice mode
+  useEffect(() => {
+    if (!voiceActive || isLoading || !synthRef.current) return;
+    const lastAI = [...messages].reverse().find(m => m.role === "assistant");
+    if (!lastAI) return;
+    const text = lastAI.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("").slice(0, 500);
+    if (!text) return;
+    synthRef.current.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.1;
+    utt.pitch = 1;
+    // Pick a good voice
+    const voices: SpeechSynthesisVoice[] = synthRef.current.getVoices();
+    const preferred = voices.find((v: SpeechSynthesisVoice) => v.name.includes("Google") && v.lang.startsWith("en"))
+      || voices.find((v: SpeechSynthesisVoice) => v.lang.startsWith("en") && !v.name.includes("eSpeak"))
+      || voices[0];
+    if (preferred) utt.voice = preferred;
+    utt.onstart = () => setVoiceSpeaking(true);
+    utt.onend = () => {
+      setVoiceSpeaking(false);
+      // Auto-listen again after speaking
+      const SR = getSR();
+      if (SR && voiceActive) setTimeout(() => startListening(SR), 400);
+    };
+    synthRef.current.speak(utt);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, isLoading]);
 
   function handleSend() {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
@@ -914,6 +1015,15 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Voice button */}
+                <button
+                  onClick={startVoiceMode}
+                  title="Voice chat"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+
                 <button
                   onClick={handleSend}
                   disabled={(!input.trim() && attachments.length === 0) || isLoading}
@@ -932,6 +1042,77 @@ export default function Home() {
             </p>
           </div>
         </div>
+
+        {/* ── Voice Mode Overlay ── */}
+        {voiceActive && (
+          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center">
+            {/* Animated orb */}
+            <div className="relative mb-10">
+              <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${
+                voiceSpeaking
+                  ? "bg-gradient-to-br from-blue-500 to-violet-600 shadow-2xl shadow-blue-500/50 scale-110"
+                  : voiceListening
+                  ? "bg-gradient-to-br from-red-500 to-pink-600 shadow-2xl shadow-red-500/50 scale-105"
+                  : "bg-white/[0.08] border border-white/10"
+              }`}>
+                {voiceSpeaking ? (
+                  <Volume2 className="w-12 h-12 text-white" />
+                ) : voiceListening ? (
+                  <Mic className="w-12 h-12 text-white animate-pulse" />
+                ) : (
+                  <TataILogo className="w-14 h-14" />
+                )}
+              </div>
+              {/* Pulse rings */}
+              {(voiceListening || voiceSpeaking) && (
+                <>
+                  <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${voiceSpeaking ? "bg-blue-500" : "bg-red-500"}`} />
+                  <div className={`absolute -inset-4 rounded-full animate-ping opacity-10 delay-150 ${voiceSpeaking ? "bg-blue-500" : "bg-red-500"}`} />
+                </>
+              )}
+            </div>
+
+            {/* Status text */}
+            <p className="text-white text-xl font-semibold mb-2">
+              {voiceSpeaking ? "tataI is speaking…" : voiceListening ? "Listening…" : "Tap mic to speak"}
+            </p>
+            {voiceTranscript && (
+              <p className="text-white/50 text-sm max-w-xs text-center mb-4">{voiceTranscript}</p>
+            )}
+
+            {/* Controls */}
+            <div className="flex items-center gap-4 mt-6">
+              {/* Manual mic button */}
+              <button
+                onClick={() => {
+                  if (voiceListening) {
+                    recognitionRef.current?.stop();
+                  } else {
+                    const SR = getSR();
+                    if (SR) startListening(SR);
+                  }
+                }}
+                className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                  voiceListening
+                    ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/40"
+                    : "bg-white/10 hover:bg-white/20 border border-white/20"
+                }`}
+              >
+                {voiceListening ? <MicOff className="w-7 h-7 text-white" /> : <Mic className="w-7 h-7 text-white" />}
+              </button>
+
+              {/* End call */}
+              <button
+                onClick={stopVoiceMode}
+                className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-lg shadow-red-600/40"
+              >
+                <XIcon className="w-6 h-6 text-white" />
+              </button>
+            </div>
+
+            <p className="text-white/20 text-xs mt-8">Powered by tataI · tatadev LLC</p>
+          </div>
+        )}
       </main>
     </div>
   );
