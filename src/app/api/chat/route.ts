@@ -6,24 +6,27 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
-  // Only enforce auth/limits when Clerk AND Supabase are both fully configured
-  const clerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  // Verify Firebase ID token if Supabase is configured (full auth enforcement mode)
+  const firebaseConfigured = !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const supabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  if (clerkConfigured && supabaseConfigured) {
+  if (firebaseConfigured && supabaseConfigured) {
     try {
-      const { auth } = await import("@clerk/nextjs/server");
-      const { userId } = await auth();
-      if (!userId) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
         return Response.json({ error: "Please sign in to use tataI." }, { status: 401 });
       }
-      const { incrementMessageCount, upsertUser } = await import("@/lib/db");
-      const { currentUser } = await import("@clerk/nextjs/server");
-      const clerkUser = await currentUser();
-      const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? "";
-      const name = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || email;
-      await upsertUser(userId, email, name);
-      const { allowed } = await incrementMessageCount(userId);
+      const idToken = authHeader.slice(7);
+      const { getAuth } = await import("firebase-admin/auth");
+      const { initializeAdminApp } = await import("@/lib/firebase-admin");
+      initializeAdminApp();
+      const decoded = await getAuth().verifyIdToken(idToken);
+      const uid = decoded.uid;
+      const email = decoded.email ?? "";
+      const name = decoded.name ?? email;
+      const { upsertUser, incrementMessageCount } = await import("@/lib/db");
+      await upsertUser(uid, email, name);
+      const { allowed } = await incrementMessageCount(uid);
       if (!allowed) {
         return Response.json({ error: "Daily limit reached. Upgrade to Pro for unlimited messages." }, { status: 429 });
       }

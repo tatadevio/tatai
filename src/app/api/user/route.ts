@@ -1,19 +1,31 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { getUser, upsertUser } from "@/lib/db";
 
-export async function GET() {
-  const { userId } = await auth();
-  if (!userId) return new Response("Unauthorized", { status: 401 });
+async function getFirebaseUid(req: Request): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  try {
+    const { getAuth } = await import("firebase-admin/auth");
+    const { initializeAdminApp } = await import("@/lib/firebase-admin");
+    initializeAdminApp();
+    const decoded = await getAuth().verifyIdToken(authHeader.slice(7));
+    return decoded.uid;
+  } catch { return null; }
+}
 
-  let user = await getUser(userId);
+export async function GET(req: Request) {
+  const uid = await getFirebaseUid(req);
+  if (!uid) return new Response("Unauthorized", { status: 401 });
 
-  if (!user) {
-    const clerkUser = await currentUser();
-    const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? "";
-    const name = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || email;
-    await upsertUser(userId, email, name);
-    user = await getUser(userId);
-  }
+  const user = await getUser(uid);
+  return Response.json(user);
+}
 
+export async function POST(req: Request) {
+  const uid = await getFirebaseUid(req);
+  if (!uid) return new Response("Unauthorized", { status: 401 });
+
+  const { email, name } = await req.json();
+  await upsertUser(uid, email ?? "", name ?? "");
+  const user = await getUser(uid);
   return Response.json(user);
 }

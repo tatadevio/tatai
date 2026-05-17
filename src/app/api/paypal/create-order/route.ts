@@ -1,5 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
-
 const PAYPAL_BASE = process.env.PAYPAL_MODE === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
@@ -19,9 +17,9 @@ async function getAccessToken() {
   return data.access_token as string;
 }
 
-export async function POST() {
-  const { userId } = await auth();
-  if (!userId) return new Response("Unauthorized", { status: 401 });
+export async function POST(req: Request) {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return new Response("Unauthorized", { status: 401 });
 
   const token = await getAccessToken();
   const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders`, {

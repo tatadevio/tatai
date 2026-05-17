@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useRef, useEffect, useState, useCallback } from "react";
@@ -9,13 +7,14 @@ import { useRouter } from "next/navigation";
 import {
   Send, Plus, Code, FileText, Search, Zap, Crown,
   MessageSquare, Settings, Info, Shield, FileTerminal,
-  PanelLeft, Copy, Check, User, ChevronUp, LogIn,
+  PanelLeft, Copy, Check, User, ChevronUp, LogIn, LogOut,
   Paperclip, Image as ImageIcon, X as XIcon, File,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TataILogo } from "@/components/Logo";
 import { CodeBlock } from "@/components/CodeBlock";
+import { useAuth } from "@/context/AuthContext";
 
 const SUGGESTIONS = [
   { icon: Code, label: "Write code", desc: "Debug, build, explain", prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
@@ -84,6 +83,7 @@ function MessageContent({ content }: { content: string }) {
 
 export default function Home() {
   const router = useRouter();
+  const { user, logout, setShowLogin } = useAuth();
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -268,7 +268,7 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Bottom — collapsible menu + login */}
+        {/* Bottom — collapsible menu + user */}
         <div className="border-t border-neutral-200 dark:border-white/[0.06]">
           {/* Expandable menu items */}
           {menuOpen && (
@@ -283,28 +283,58 @@ export default function Home() {
                   {label}
                 </button>
               ))}
-              <button
-                onClick={() => router.push("/upgrade")}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
-              >
-                <Crown className="w-3.5 h-3.5" />
-                Upgrade to Pro
-              </button>
+              {!user && (
+                <button
+                  onClick={() => router.push("/upgrade")}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  Upgrade to Pro
+                </button>
+              )}
+              {user && (
+                <button
+                  onClick={() => { logout(); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors text-left"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign out
+                </button>
+              )}
               <div className="h-1" />
             </div>
           )}
 
-          {/* Login row with arrow toggle */}
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
-          >
-            <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0">
-              <LogIn className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-            </div>
-            <span className="flex-1 text-[13px] font-medium text-neutral-700 dark:text-white/60 text-left">Log in</span>
-            <ChevronUp className={`w-4 h-4 text-neutral-400 dark:text-white/30 transition-transform duration-200 ${menuOpen ? "rotate-0" : "rotate-180"}`} />
-          </button>
+          {/* User row with arrow toggle */}
+          {user ? (
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+            >
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full flex-shrink-0 object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-[13px] font-semibold">{(user.displayName ?? user.email ?? "U")[0].toUpperCase()}</span>
+                </div>
+              )}
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-[13px] font-medium text-neutral-800 dark:text-white/80 truncate">{user.displayName ?? user.email ?? "User"}</p>
+                {user.displayName && user.email && <p className="text-[11px] text-neutral-400 dark:text-white/30 truncate">{user.email}</p>}
+              </div>
+              <ChevronUp className={`w-4 h-4 text-neutral-400 dark:text-white/30 flex-shrink-0 transition-transform duration-200 ${menuOpen ? "rotate-0" : "rotate-180"}`} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowLogin(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0">
+                <LogIn className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <span className="flex-1 text-[13px] font-medium text-neutral-700 dark:text-white/60 text-left">Log in</span>
+            </button>
+          )}
         </div>
       </aside>
 

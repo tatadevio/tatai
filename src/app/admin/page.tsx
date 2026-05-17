@@ -1,13 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { getAllUsers } from "@/lib/db";
+export const dynamic = "force-dynamic";
 
-const ADMIN_USER_ID = process.env.ADMIN_CLERK_ID;
+import { redirect } from "next/navigation";
 
 export default async function AdminPage() {
-  const { userId } = await auth();
-  if (!userId || userId !== ADMIN_USER_ID) redirect("/");
+  const supabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseConfigured) redirect("/");
 
+  const { getAllUsers } = await import("@/lib/db");
   const users = await getAllUsers();
   const proUsers = users.filter((u) => u.plan === "pro").length;
   const freeUsers = users.filter((u) => u.plan === "free").length;

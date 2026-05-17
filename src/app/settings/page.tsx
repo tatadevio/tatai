@@ -1,13 +1,11 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Sun, Moon, Monitor, Crown, ChevronRight } from "lucide-react";
 import { TataILogo } from "@/components/Logo";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 const THEMES = [
   { value: "light", label: "Light", icon: Sun },
@@ -16,7 +14,7 @@ const THEMES = [
 ] as const;
 
 export default function SettingsPage() {
-  const { user } = useUser();
+  const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -44,12 +42,16 @@ export default function SettingsPage() {
             <h2 className="font-semibold text-neutral-900 dark:text-white text-sm uppercase tracking-wider text-neutral-500 dark:text-white/40">Profile</h2>
           </div>
           <div className="px-6 py-5 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
-              {user?.firstName?.[0]?.toUpperCase() ?? user?.username?.[0]?.toUpperCase() ?? "U"}
-            </div>
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="avatar" className="w-14 h-14 rounded-2xl object-cover shadow-lg" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
+                {(user?.displayName ?? user?.email ?? "U")[0].toUpperCase()}
+              </div>
+            )}
             <div>
-              <p className="font-semibold text-neutral-900 dark:text-white text-[15px]">{user?.firstName} {user?.lastName}</p>
-              <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5">{user?.emailAddresses?.[0]?.emailAddress}</p>
+              <p className="font-semibold text-neutral-900 dark:text-white text-[15px]">{user?.displayName ?? "Guest"}</p>
+              <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5">{user?.email ?? "Not signed in"}</p>
             </div>
           </div>
         </section>

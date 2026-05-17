@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { upgradeToPro } from "@/lib/db";
 
 const PAYPAL_BASE = process.env.PAYPAL_MODE === "live"
@@ -21,8 +20,17 @@ async function getAccessToken() {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) return new Response("Unauthorized", { status: 401 });
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return new Response("Unauthorized", { status: 401 });
+
+  let uid: string;
+  try {
+    const { getAuth } = await import("firebase-admin/auth");
+    const { initializeAdminApp } = await import("@/lib/firebase-admin");
+    initializeAdminApp();
+    const decoded = await getAuth().verifyIdToken(authHeader.slice(7));
+    uid = decoded.uid;
+  } catch { return new Response("Unauthorized", { status: 401 }); }
 
   const { orderID } = await req.json();
   const token = await getAccessToken();
@@ -35,7 +43,7 @@ export async function POST(req: Request) {
   const data = await res.json();
 
   if (data.status === "COMPLETED") {
-    await upgradeToPro(userId, orderID);
+    await upgradeToPro(uid, orderID);
     return Response.json({ success: true });
   }
 
