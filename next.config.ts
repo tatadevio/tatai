@@ -3,12 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
 
-  // Proxy Firebase auth handler through tatai.cloud so Google popup shows tatai.cloud
+  // Proxy all Firebase /__/ paths through tatai.cloud (auth handler + init files)
   async rewrites() {
     return [
       {
-        source: "/__/auth/:path*",
-        destination: "https://tatai-d1fe3.firebaseapp.com/__/auth/:path*",
+        source: "/__/:path*",
+        destination: "https://tatai-d1fe3.firebaseapp.com/__/:path*",
       },
     ];
   },
