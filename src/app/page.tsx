@@ -21,7 +21,7 @@ const TATAI_MODELS = [
   {
     id: "tatai-flash",
     name: "Zara",
-    fullName: "tataAI Zara",
+    fullName: "Flash",
     desc: "Lightning fast answers",
     apiModel: "gpt-4o-mini",
     icon: ZapIcon,
@@ -33,7 +33,7 @@ const TATAI_MODELS = [
   {
     id: "tatai-smart",
     name: "Nova",
-    fullName: "tataAI Nova",
+    fullName: "Nova",
     desc: "Best for most tasks",
     apiModel: "gpt-4o",
     icon: Sparkles,
@@ -45,7 +45,7 @@ const TATAI_MODELS = [
   {
     id: "tatai-think",
     name: "Orion",
-    fullName: "tataAI Orion",
+    fullName: "Orion",
     desc: "Deep reasoning & analysis",
     apiModel: "o4-mini",
     icon: Brain,
@@ -961,8 +961,7 @@ export default function Home() {
                       className="flex items-center gap-1.5 pl-2 sm:pl-2.5 pr-1.5 sm:pr-2 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-700 dark:hover:text-white transition-colors active:scale-95"
                     >
                       <activeModelDef.icon className={`w-3.5 h-3.5 flex-shrink-0 ${activeModelDef.color}`} />
-                      <span className="hidden sm:inline">{activeModelDef.fullName}</span>
-                      <span className="sm:hidden">{activeModelDef.name}</span>
+                      <span>{activeModelDef.fullName}</span>
                       <ChevronDown className="w-3 h-3 opacity-50" />
                     </button>
 
