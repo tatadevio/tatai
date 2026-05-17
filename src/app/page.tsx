@@ -740,11 +740,6 @@ export default function Home() {
           {messages.length === 0 ? (
             /* ── Welcome screen ── */
             <div className="flex flex-col items-center justify-center min-h-full px-4 pb-40 pt-10">
-              {/* Logo glow */}
-              <div className="relative mb-5">
-                <div className="absolute inset-0 blur-2xl opacity-30 bg-gradient-to-br from-blue-500 to-violet-600 rounded-full scale-150" />
-                <TataILogo className="relative w-12 h-12 sm:w-14 sm:h-14 drop-shadow-lg" />
-              </div>
               <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight text-neutral-900 dark:text-white mb-2 text-center">
                 How can I help you?
               </h1>
