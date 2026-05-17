@@ -10,6 +10,7 @@ import {
   Send, Plus, Code, FileText, Search, Zap, Crown,
   MessageSquare, Settings, Info, Shield, FileTerminal,
   PanelLeft, Copy, Check, User, ChevronUp, LogIn,
+  Paperclip, Image as ImageIcon, X as XIcon, File,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -88,9 +89,12 @@ export default function Home() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachPreviews, setAttachPreviews] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -109,16 +113,47 @@ export default function Home() {
     ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
   }, []);
 
+  function addFiles(files: FileList | null) {
+    if (!files) return;
+    const newFiles = Array.from(files);
+    setAttachments((prev) => [...prev, ...newFiles]);
+    newFiles.forEach((file) => {
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (e) => setAttachPreviews((p) => [...p, e.target?.result as string]);
+        reader.readAsDataURL(file);
+      } else {
+        setAttachPreviews((p) => [...p, ""]);
+      }
+    });
+  }
+
+  function removeAttachment(i: number) {
+    setAttachments((p) => p.filter((_, idx) => idx !== i));
+    setAttachPreviews((p) => p.filter((_, idx) => idx !== i));
+  }
+
   function handleSend() {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
     const text = input.trim();
+    const titleText = text || (attachments[0]?.name ?? "File upload");
     if (messages.length === 0) {
       const id = Date.now().toString();
-      setSessions((p) => [{ id, title: text.slice(0, 40) }, ...p]);
+      setSessions((p) => [{ id, title: titleText.slice(0, 40) }, ...p]);
       setActiveSession(id);
     }
-    sendMessage({ text });
+
+    if (attachments.length > 0) {
+      const dt = new DataTransfer();
+      attachments.forEach((f) => dt.items.add(f));
+      sendMessage({ text, files: dt.files });
+    } else {
+      sendMessage({ text });
+    }
+
     setInput("");
+    setAttachments([]);
+    setAttachPreviews([]);
     if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
   }
 
@@ -268,8 +303,28 @@ export default function Home() {
 
                   <div className={`flex-1 min-w-0 ${m.role === "user" ? "flex justify-end" : ""}`}>
                     {m.role === "user" ? (
-                      <div className="max-w-[85%] bg-neutral-100 dark:bg-[#2f2f2f] text-neutral-900 dark:text-white rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap">
-                        {m.parts.map((part, i) => part.type === "text" ? part.text : null)}
+                      <div className="max-w-[85%] flex flex-col gap-2 items-end">
+                        {/* File/image parts */}
+                        {m.parts.filter(p => p.type === "file").map((part, i) => {
+                          if (part.type !== "file") return null;
+                          const isImage = part.mediaType?.startsWith("image/");
+                          if (isImage) {
+                            const url = part.url ?? "";
+                            return <img key={i} src={url} alt="uploaded" className="max-w-[280px] rounded-2xl rounded-tr-sm object-cover border border-neutral-200 dark:border-white/10" />;
+                          }
+                          return (
+                            <div key={i} className="flex items-center gap-2 bg-neutral-100 dark:bg-[#2f2f2f] rounded-xl px-3 py-2 text-sm text-neutral-700 dark:text-white/70">
+                              <File className="w-4 h-4 text-neutral-400" />
+                              <span className="text-[13px]">{String(part.url ?? "File").split("/").pop()}</span>
+                            </div>
+                          );
+                        })}
+                        {/* Text part */}
+                        {m.parts.some(p => p.type === "text" && p.type === "text" && (p as {type:"text";text:string}).text) && (
+                          <div className="bg-neutral-100 dark:bg-[#2f2f2f] text-neutral-900 dark:text-white rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap">
+                            {m.parts.map((part, i) => part.type === "text" ? part.text : null)}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-neutral-800 dark:text-neutral-100 text-[14px] leading-relaxed">
@@ -302,31 +357,97 @@ export default function Home() {
         {/* ── Input bar ── */}
         <div className={`px-4 pb-6 pt-2 ${messages.length === 0 ? "absolute bottom-0 left-0 right-0" : ""}`}>
           <div className="max-w-[760px] mx-auto">
-            <div className="relative bg-white dark:bg-[#2f2f2f] border border-neutral-200 dark:border-neutral-600 rounded-2xl shadow-sm dark:shadow-none overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-400 transition-colors">
+            <div className="bg-white dark:bg-[#2f2f2f] border border-neutral-200 dark:border-neutral-600 rounded-2xl shadow-sm dark:shadow-none focus-within:border-neutral-400 dark:focus-within:border-neutral-400 transition-colors">
+
+              {/* Attachment previews */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-4 pt-3">
+                  {attachments.map((file, i) => (
+                    <div key={i} className="relative group">
+                      {attachPreviews[i] ? (
+                        <img src={attachPreviews[i]} alt={file.name} className="w-16 h-16 rounded-xl object-cover border border-neutral-200 dark:border-white/10" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-neutral-100 dark:bg-white/[0.08] border border-neutral-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 px-1">
+                          <File className="w-5 h-5 text-neutral-400 dark:text-neutral-500" />
+                          <span className="text-[9px] text-neutral-400 dark:text-neutral-500 truncate w-full text-center">{file.name.split(".").pop()?.toUpperCase()}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removeAttachment(i)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-800 dark:bg-neutral-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                      {!attachPreviews[i] && (
+                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5 w-16 truncate text-center">{file.name}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Textarea */}
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
-                placeholder="Message tataI"
+                onPaste={(e) => {
+                  const items = Array.from(e.clipboardData.items);
+                  const imageItem = items.find(item => item.type.startsWith("image/"));
+                  if (imageItem) {
+                    const file = imageItem.getAsFile();
+                    if (file) addFiles(Object.assign(new DataTransfer(), { files: [file] }).files);
+                  }
+                }}
+                placeholder={attachments.length > 0 ? "Add a message or just send the file..." : "Message tataI"}
                 rows={1}
                 className="w-full resize-none bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-[14px] leading-relaxed px-4 pt-3.5 pb-12 focus:outline-none min-h-[56px] max-h-[200px]"
               />
-              {/* Toolbar inside input */}
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2">
+
+              {/* Toolbar */}
+              <div className="flex items-center justify-between px-3 pb-2.5">
                 <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-neutral-400 dark:text-neutral-500 px-2">tataI</span>
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.txt,.md,.js,.ts,.py,.html,.css,.json,.csv,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => addFiles(e.target.files)}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach files"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = "image/*";
+                        fileInputRef.current.click();
+                        fileInputRef.current.accept = "image/*,.pdf,.txt,.md,.js,.ts,.py,.html,.css,.json,.csv,.doc,.docx";
+                      }
+                    }}
+                    title="Attach image"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </button>
                 </div>
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
+                  disabled={(!input.trim() && attachments.length === 0) || isLoading}
                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                    input.trim() && !isLoading
+                    (input.trim() || attachments.length > 0) && !isLoading
                       ? "bg-neutral-900 dark:bg-white hover:bg-neutral-700 dark:hover:bg-neutral-200"
                       : "bg-neutral-200 dark:bg-neutral-600 cursor-not-allowed"
                   }`}
                 >
-                  <Send className={`w-3.5 h-3.5 ${input.trim() && !isLoading ? "text-white dark:text-neutral-900" : "text-neutral-400 dark:text-neutral-400"}`} />
+                  <Send className={`w-3.5 h-3.5 ${(input.trim() || attachments.length > 0) && !isLoading ? "text-white dark:text-neutral-900" : "text-neutral-400"}`} />
                 </button>
               </div>
             </div>

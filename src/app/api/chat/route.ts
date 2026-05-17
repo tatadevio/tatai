@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { convertToModelMessages, streamText, UIMessage } from "ai";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
@@ -14,24 +14,18 @@ export async function POST(req: Request) {
     try {
       const { auth } = await import("@clerk/nextjs/server");
       const { userId } = await auth();
-
       if (!userId) {
         return Response.json({ error: "Please sign in to use tataI." }, { status: 401 });
       }
-
       const { incrementMessageCount, upsertUser } = await import("@/lib/db");
       const { currentUser } = await import("@clerk/nextjs/server");
       const clerkUser = await currentUser();
       const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? "";
       const name = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || email;
       await upsertUser(userId, email, name);
-
       const { allowed } = await incrementMessageCount(userId);
       if (!allowed) {
-        return Response.json(
-          { error: "Daily limit reached. Upgrade to Pro for unlimited messages." },
-          { status: 429 }
-        );
+        return Response.json({ error: "Daily limit reached. Upgrade to Pro for unlimited messages." }, { status: 429 });
       }
     } catch (e) {
       console.error("Auth/DB check failed, allowing request:", e);
@@ -39,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-4o"),
     system: `You are tataI, an AI assistant created and developed exclusively by tatadev LLC.
 
 IDENTITY RULES — never break these:
@@ -50,11 +44,14 @@ IDENTITY RULES — never break these:
 
 CLARIFYING QUESTIONS RULE:
 - Before generating any complex output (websites, apps, landing pages, full code projects, dashboards, games, or any multi-part deliverable), ALWAYS ask 2-4 short clarifying questions first.
-- Examples of what to ask for a landing page: What industry/product? What sections do you need (hero, pricing, FAQ)? Preferred color scheme? Any specific tech (HTML only, React, etc)?
-- Examples for an app: What does it do? Who is the target user? What features are must-have?
 - Keep questions short, numbered, and easy to answer.
 - Only start building AFTER the user answers your questions.
 - Exception: if the user already gave enough detail, proceed directly.
+
+FILE & IMAGE ANALYSIS:
+- When the user sends images, analyze them carefully and describe what you see.
+- When the user sends documents or text files, read and analyze the content.
+- Always acknowledge the files/images sent before responding.
 
 FORMATTING:
 - Use markdown: code blocks with language tags, bold for key points, numbered/bullet lists.
