@@ -683,17 +683,19 @@ export default function Home() {
     setVoiceListening(true);
     setVoiceTranscript("");
 
-    // Silence detection — stop after 2s of silence
+    // Silence detection — stop after ~1.2s of silence
     const data = new Uint8Array(analyser.frequencyBinCount);
     let silentFrames = 0;
+    let hasSpeech = false;
 
     function checkSilence() {
       if (!voiceActiveRef.current || recorder.state !== "recording") return;
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      if (avg > 10) hasSpeech = true;
       if (avg < 8) {
         silentFrames++;
-        if (silentFrames > 45) { // ~2s at 60fps
+        if (silentFrames > (hasSpeech ? 28 : 80)) { // 1.2s after speech, 3s before
           recorder.stop();
           setVoiceListening(false);
           return;
@@ -719,14 +721,14 @@ export default function Home() {
       }
       setVoiceTranscript(text.trim());
 
-      // Send to AI
+      // Send to AI — force gpt-4o-mini for faster voice responses
       const sessionId = activeSession ?? Date.now().toString();
       if (!activeSession) {
         setSessions(p => [{ id: sessionId, title: text.slice(0, 40) }, ...p]);
         setActiveSession(sessionId);
       }
       setInput(text.trim());
-      sendMessage({ text: text.trim() });
+      sendMessage({ text: text.trim(), model: "gpt-4o-mini" } as any);
       setInput("");
     } catch {
       if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 500);
@@ -1637,170 +1639,173 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Voice Mode Overlay ── */}
+        {/* ── Voice / Video Call Overlay ── */}
         {voiceActive && (
-          <div
-            className="fixed inset-0 z-50 flex flex-col select-none"
-            style={{ background: "linear-gradient(160deg, #0f1629 0%, #111827 50%, #0a0f1e 100%)" }}
-          >
-            {/* Top bar */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <div className="flex items-center gap-2">
-                <TataILogo className="w-5 h-5" />
-                <span className="text-white/60 text-sm font-semibold">tatAI</span>
-                {voiceIsVideo && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/20">VIDEO</span>
-                )}
-              </div>
-              {/* Timer pill */}
-              <div className="flex items-center gap-1.5 bg-white/[0.06] border border-white/[0.08] rounded-full px-3 py-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs font-mono text-white/50 tabular-nums">
-                  {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")}
-                </span>
-              </div>
-            </div>
+          <div className="fixed inset-0 z-50 flex flex-col select-none bg-[#111]">
 
-            {/* Main content */}
-            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 overflow-hidden">
-              {voiceIsVideo ? (
-                /* Video mode — user camera fills center */
-                <div className="relative w-full max-w-[600px] rounded-3xl overflow-hidden bg-black"
-                  style={{ aspectRatio: "16/9", boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.6)" }}
-                >
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover scale-x-[-1]"
-                  />
-                  {/* AI avatar pip in corner */}
-                  <div className="absolute bottom-4 right-4 w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/10"
-                    style={{ background: voiceSpeaking ? "linear-gradient(135deg,#16a34a,#22c55e)" : "linear-gradient(135deg,#1d4ed8,#2563eb,#3b82f6)" }}
-                  >
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span style={{ filter: "brightness(10)" }}><TataILogo className="w-8 h-8" /></span>
-                    </div>
+            {voiceIsVideo ? (
+              /* ── VIDEO MODE: fullscreen camera ── */
+              <>
+                {/* Fullscreen camera */}
+                <video
+                  ref={videoRef}
+                  autoPlay muted playsInline
+                  className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                />
+                {/* Dim overlay for readability */}
+                <div className="absolute inset-0 bg-black/20" />
+
+                {/* Top HUD */}
+                <div className="relative z-10 flex items-center justify-between px-5 pt-6">
+                  <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5">
+                    <TataILogo className="w-4 h-4" />
+                    <span className="text-white text-sm font-semibold">tatAI</span>
                   </div>
-                  {/* Speaking indicator overlay */}
-                  {voiceSpeaking && (
-                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 rounded-full px-3 py-1.5">
-                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                      <span className="text-white text-xs font-medium">AI Speaking</span>
-                    </div>
-                  )}
-                  {voiceListening && (
-                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-blue-600/70 rounded-full px-3 py-1.5">
-                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                      <span className="text-white text-xs font-medium">Listening…</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="text-white/70 text-xs font-mono tabular-nums">
+                      {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")}
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                /* Voice mode — avatar with pulsing rings */
-                <div className="relative flex items-center justify-center" style={{ width: 180, height: 180 }}>
-                  {(voiceListening || voiceSpeaking) && (
-                    <>
-                      <div className={voiceSpeaking ? "call-ring-speaking-1" : "call-ring-1"} />
-                      <div className={voiceSpeaking ? "call-ring-speaking-2" : "call-ring-2"} />
-                    </>
-                  )}
+
+                {/* AI pip — bottom-right, branded blue circle */}
+                <div className="absolute bottom-28 right-5 z-10">
                   <div
-                    className={`relative z-10 flex items-center justify-center rounded-full ${voiceListening || voiceSpeaking ? "call-avatar-active" : ""}`}
+                    className="w-24 h-24 rounded-2xl flex items-center justify-center border-2 transition-all"
                     style={{
-                      width: 120,
-                      height: 120,
-                      background: voiceSpeaking
-                        ? "linear-gradient(135deg, #16a34a, #22c55e)"
-                        : "linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6)",
-                      boxShadow: voiceSpeaking
-                        ? "0 0 48px rgba(34,197,94,0.4)"
-                        : "0 0 48px rgba(37,99,235,0.5)",
+                      background: "linear-gradient(135deg, #1d4ed8, #2563eb)",
+                      borderColor: voiceSpeaking ? "#2563eb" : "rgba(255,255,255,0.15)",
+                      boxShadow: voiceSpeaking ? "0 0 20px rgba(37,99,235,0.6)" : "0 4px 20px rgba(0,0,0,0.4)",
                     }}
                   >
-                    <span style={{ filter: "brightness(10)" }}><TataILogo className="w-14 h-14" /></span>
+                    <TataILogo className="w-10 h-10" />
+                  </div>
+                  {/* Status badge */}
+                  <div className={`mt-1.5 flex items-center justify-center gap-1.5 rounded-full py-0.5 px-2 ${voiceSpeaking ? "bg-blue-600" : voiceListening ? "bg-[#2563eb]/80" : "bg-black/50"}`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="text-white text-[10px] font-semibold">{voiceSpeaking ? "Speaking" : voiceListening ? "Listening" : "Ready"}</span>
                   </div>
                 </div>
-              )}
 
-              {/* Status */}
-              <div className="text-center">
-                <p className="text-white text-xl font-bold tracking-tight mb-2">tatAI</p>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex items-end gap-[3px] h-5">
-                    {[0,1,2,3,4].map(i => (
-                      <div
-                        key={i}
-                        className={`call-sound-bar ${!(voiceListening || voiceSpeaking) ? "call-sound-bar-idle" : ""}`}
-                        style={{
-                          background: voiceSpeaking ? "#22c55e" : voiceListening ? "#3b82f6" : "rgba(255,255,255,0.2)",
-                          animationDuration: voiceSpeaking ? `${0.55 + i * 0.07}s` : `${0.85 + i * 0.08}s`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-white/50 text-sm font-medium">
-                    {voiceSpeaking ? "Speaking…" : voiceListening ? "Listening…" : "Ready"}
-                  </p>
-                </div>
+                {/* Transcript overlay */}
                 {voiceTranscript && (
-                  <p className="text-white/30 text-[12px] mt-3 max-w-[280px] mx-auto leading-relaxed italic">"{voiceTranscript}"</p>
-                )}
-              </div>
-            </div>
-
-            {/* Bottom controls */}
-            <div className="pb-14 px-10">
-              <div className="flex items-center justify-center gap-6">
-                {/* Mute */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <button
-                    onClick={toggleVoiceMute}
-                    className={`w-[56px] h-[56px] rounded-full flex items-center justify-center transition-all active:scale-90 ${
-                      voiceMuted
-                        ? "bg-red-500/20 border border-red-500/30"
-                        : "bg-white/[0.08] border border-white/[0.12]"
-                    }`}
-                  >
-                    {voiceMuted
-                      ? <MicOff className="w-5 h-5 text-red-400" />
-                      : <Mic className="w-5 h-5 text-white/70" />
-                    }
-                  </button>
-                  <span className="text-white/25 text-[10px] font-medium">{voiceMuted ? "Unmute" : "Mute"}</span>
-                </div>
-
-                {/* End call */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <button
-                    onClick={stopVoiceMode}
-                    className="w-[68px] h-[68px] rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all active:scale-90"
-                    style={{ boxShadow: "0 8px 32px rgba(239,68,68,0.5)" }}
-                  >
-                    <PhoneOff className="w-6 h-6 text-white" />
-                  </button>
-                  <span className="text-white/25 text-[10px] font-medium">End</span>
-                </div>
-
-                {/* Camera toggle (video mode only) */}
-                {voiceIsVideo ? (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <button className="w-[56px] h-[56px] rounded-full bg-white/[0.08] border border-white/[0.12] flex items-center justify-center">
-                      <Video className="w-5 h-5 text-white/70" />
-                    </button>
-                    <span className="text-white/25 text-[10px] font-medium">Camera</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <button className="w-[56px] h-[56px] rounded-full bg-white/[0.08] border border-white/[0.12] flex items-center justify-center">
-                      <Volume2 className="w-5 h-5 text-white/70" />
-                    </button>
-                    <span className="text-white/25 text-[10px] font-medium">Speaker</span>
+                  <div className="absolute bottom-28 left-5 right-36 z-10">
+                    <p className="text-white/80 text-sm italic bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2 leading-snug">"{voiceTranscript}"</p>
                   </div>
                 )}
-              </div>
-            </div>
+
+                {/* Controls */}
+                <div className="relative z-10 mt-auto pb-10 flex items-center justify-center gap-6">
+                  <div className="flex flex-col items-center gap-1">
+                    <button onClick={toggleVoiceMute} className={`w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm transition-all active:scale-90 ${voiceMuted ? "bg-white/20 border border-white/30" : "bg-black/40 border border-white/20"}`}>
+                      {voiceMuted ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
+                    </button>
+                    <span className="text-white/40 text-[10px]">{voiceMuted ? "Unmute" : "Mute"}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <button onClick={stopVoiceMode} className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all active:scale-90" style={{ boxShadow: "0 6px 24px rgba(239,68,68,0.5)" }}>
+                      <PhoneOff className="w-6 h-6 text-white" />
+                    </button>
+                    <span className="text-white/40 text-[10px]">End</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <button className="w-14 h-14 rounded-full bg-black/40 border border-white/20 flex items-center justify-center backdrop-blur-sm">
+                      <Video className="w-5 h-5 text-white" />
+                    </button>
+                    <span className="text-white/40 text-[10px]">Camera</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ── VOICE MODE: branded dark ── */
+              <>
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-5 pt-6 pb-4">
+                  <div className="flex items-center gap-2">
+                    <TataILogo className="w-5 h-5" />
+                    <span className="text-white/70 text-sm font-bold tracking-tight">tatAI</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white/[0.05] border border-white/[0.07] rounded-full px-3 py-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="text-white/40 text-xs font-mono tabular-nums">
+                      {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Avatar */}
+                <div className="flex-1 flex flex-col items-center justify-center gap-7">
+                  <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
+                    {/* Pulse rings — brand blue only */}
+                    {(voiceListening || voiceSpeaking) && (
+                      <>
+                        <div className="call-ring-1" style={{ borderColor: "rgba(37,99,235,0.5)" }} />
+                        <div className="call-ring-2" style={{ borderColor: "rgba(37,99,235,0.3)" }} />
+                      </>
+                    )}
+                    {/* Avatar circle */}
+                    <div
+                      className="relative z-10 w-[130px] h-[130px] rounded-full flex items-center justify-center transition-all duration-500"
+                      style={{
+                        background: "linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6)",
+                        boxShadow: (voiceListening || voiceSpeaking)
+                          ? "0 0 0 0px rgba(37,99,235,0), 0 0 60px rgba(37,99,235,0.5)"
+                          : "0 0 30px rgba(37,99,235,0.2)",
+                      }}
+                    >
+                      <TataILogo className="w-16 h-16" />
+                    </div>
+                  </div>
+
+                  {/* Name + status */}
+                  <div className="text-center">
+                    <p className="text-white text-2xl font-bold tracking-tight mb-2">tatAI</p>
+                    <div className="flex items-center justify-center gap-2 h-6">
+                      <div className="flex items-end gap-[3px]">
+                        {[0,1,2,3,4].map(i => (
+                          <div key={i}
+                            className={`call-sound-bar ${!(voiceListening || voiceSpeaking) ? "call-sound-bar-idle" : ""}`}
+                            style={{
+                              background: "#2563eb",
+                              animationDuration: `${0.6 + i * 0.07}s`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-white/40 text-sm font-medium">
+                        {voiceSpeaking ? "Speaking…" : voiceListening ? "Listening…" : "Ready"}
+                      </p>
+                    </div>
+                    {voiceTranscript && (
+                      <p className="text-white/25 text-xs mt-4 max-w-[260px] mx-auto italic leading-relaxed">"{voiceTranscript}"</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="pb-14 flex items-center justify-center gap-8">
+                  <div className="flex flex-col items-center gap-1.5">
+                    <button onClick={toggleVoiceMute} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all active:scale-90 border ${voiceMuted ? "bg-white/10 border-white/20" : "bg-white/[0.06] border-white/[0.08]"}`}>
+                      {voiceMuted ? <MicOff className="w-5 h-5 text-white/50" /> : <Mic className="w-5 h-5 text-white/70" />}
+                    </button>
+                    <span className="text-white/25 text-[10px]">{voiceMuted ? "Unmute" : "Mute"}</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <button onClick={stopVoiceMode} className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all active:scale-90" style={{ boxShadow: "0 6px 24px rgba(239,68,68,0.45)" }}>
+                      <PhoneOff className="w-6 h-6 text-white" />
+                    </button>
+                    <span className="text-white/25 text-[10px]">End</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <button className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
+                      <Volume2 className="w-5 h-5 text-white/40" />
+                    </button>
+                    <span className="text-white/25 text-[10px]">Speaker</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </main>
