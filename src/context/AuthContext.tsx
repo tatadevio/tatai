@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { User, onAuthStateChanged, signOut } from "firebase/auth";
+import { User, onAuthStateChanged, signOut, getRedirectResult } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 
 interface AuthContextType {
@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const firebaseAuth = getFirebaseAuth();
+      // Handle Google redirect result when returning from OAuth
+      getRedirectResult(firebaseAuth).catch(() => {});
       const unsub = onAuthStateChanged(firebaseAuth, (u) => {
         setUser(u);
         setLoading(false);

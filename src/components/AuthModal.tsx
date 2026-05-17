@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, GoogleAuthProvider, updateProfile, sendPasswordResetEmail,
+  signInWithRedirect, getRedirectResult, GoogleAuthProvider, updateProfile, sendPasswordResetEmail,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -59,10 +59,7 @@ export function AuthModal() {
     try {
       const auth = getFirebaseAuth();
       if (!auth) { setError("Auth not configured"); return; }
-      await sendPasswordResetEmail(auth, email.trim(), {
-        url: "https://www.tatai.cloud",
-        handleCodeInApp: false,
-      });
+      await sendPasswordResetEmail(auth, email.trim());
       setResetSent(true);
     } catch (e: unknown) {
       setError(friendly((e as { code?: string }).code ?? ""));
@@ -76,14 +73,16 @@ export function AuthModal() {
     try {
       const auth = getFirebaseAuth();
       if (!auth) { setError("Auth not configured"); return; }
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      setShowLogin(false);
-      consumeRedirect(router);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithRedirect(auth, provider);
+      // Page will redirect — result is handled in AuthProvider via getRedirectResult
     } catch (e: unknown) {
       const code = (e as { code?: string }).code ?? "";
       const msg = friendly(code);
       if (msg) setError(msg);
-    } finally { setLoading(false); }
+      setLoading(false);
+    }
   }
 
   async function handleEmail(e: React.FormEvent) {

@@ -3,15 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
 
-  // Proxy all Firebase /__/ paths through tatai.cloud (auth handler + init files)
-  async rewrites() {
-    return [
-      {
-        source: "/__/:path*",
-        destination: "https://tatai-d1fe3.firebaseapp.com/__/:path*",
-      },
-    ];
-  },
 
   async headers() {
     return [
