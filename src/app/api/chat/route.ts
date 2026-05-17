@@ -3,6 +3,43 @@ import { convertToModelMessages, streamText, UIMessage } from "ai";
 
 export const maxDuration = 60;
 
+// Extract all URLs from a string
+function extractUrls(text: string): string[] {
+  const urlRegex = /https?:\/\/[^\s"'<>)]+/g;
+  return [...new Set(text.match(urlRegex) ?? [])];
+}
+
+// Fetch a URL and return its readable text content
+async function fetchUrlContent(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; tataI-bot/1.0)" },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return `[Could not fetch ${url}: HTTP ${res.status}]`;
+    const html = await res.text();
+    // Strip HTML tags and collapse whitespace
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/\s{2,}/g, " ")
+      .trim()
+      .slice(0, 6000); // Limit to 6k chars to avoid token overload
+    return text || "[Page appears empty]";
+  } catch {
+    return `[Could not fetch ${url}]`;
+  }
+}
+
 const ALLOWED_MODELS: Record<string, string> = {
   "gpt-4o-mini": "gpt-4o-mini",
   "gpt-4o": "gpt-4o",
@@ -42,6 +79,22 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── URL fetching: detect URLs in the latest user message and fetch their content ──
+  let urlContext = "";
+  const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+  if (lastUserMsg) {
+    const textParts = lastUserMsg.parts?.filter((p: {type: string}) => p.type === "text") ?? [];
+    const fullText = textParts.map((p: {type: string; text?: string}) => p.text ?? "").join(" ");
+    const urls = extractUrls(fullText);
+    if (urls.length > 0) {
+      const fetched = await Promise.all(urls.slice(0, 3).map(async (url) => {
+        const content = await fetchUrlContent(url);
+        return `\n\n=== Content fetched from ${url} ===\n${content}\n=== End of ${url} ===`;
+      }));
+      urlContext = fetched.join("");
+    }
+  }
+
   const result = streamText({
     model: openai(resolvedModel),
     system: `You are tataI, an AI assistant created and developed exclusively by tatadev LLC.
@@ -74,7 +127,11 @@ FILE & IMAGE ANALYSIS:
 FORMATTING:
 - Use markdown: code blocks with language tags, bold for key points, numbered/bullet lists.
 - For complete files (HTML, CSS, JS, Python etc), always wrap in a proper fenced code block with the correct language tag.
-- When writing HTML files, always write complete, self-contained files with all CSS included.`,
+- When writing HTML files, always write complete, self-contained files with all CSS included.
+
+WEB BROWSING:
+- When the user shares a URL, you have already fetched its content (provided below). Use it to answer questions about the page.
+- Always summarize and analyze the fetched content directly. Never say you "can't access" a URL if content is provided.${urlContext ? `\n\nFETCHED WEB CONTENT:${urlContext}` : ""}`,
     messages: await convertToModelMessages(messages),
   });
 
