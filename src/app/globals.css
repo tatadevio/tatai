@@ -155,10 +155,9 @@
   /* Selection color */
   ::selection { background: rgba(37,99,235,0.2); }
 
-  /* PayPal — remove white wrapper background */
-  .paypal-wrapper > div,
-  .paypal-buttons,
-  .paypal-buttons-container { background: transparent !important; }
+  /* PayPal — remove white backgrounds (JS also patches inline styles) */
+  [class*="paypal-buttons"] { background: transparent !important; background-color: transparent !important; }
+  [id*="paypal-container"] { background: transparent !important; background-color: transparent !important; }
 
   /* Voice waveform bars */
   @keyframes voice-wave {

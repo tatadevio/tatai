@@ -1,10 +1,9 @@
 "use client";
 
-import { Component, ReactNode } from "react";
+import { Component, ReactNode, useEffect, useRef, useState } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useAuth } from "@/context/AuthContext";
 
-// Error boundary to catch any PayPal SDK crash
 class PayPalErrorBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { crashed: boolean }
@@ -21,18 +20,47 @@ interface Props {
   onSuccess: () => void;
 }
 
-export default function PayPalBox({ onSuccess }: Props) {
-  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
+function PayPalInner({ onSuccess }: Props) {
   const { user } = useAuth();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [payError, setPayError] = useState("");
+  const [processing, setProcessing] = useState(false);
+
+  // Strip white backgrounds PayPal injects via inline styles
+  useEffect(() => {
+    function patchBg() {
+      if (!wrapperRef.current) return;
+      wrapperRef.current.querySelectorAll<HTMLElement>("*").forEach((el) => {
+        const bg = el.style.background || el.style.backgroundColor;
+        if (bg && (bg.includes("white") || bg.includes("#fff") || bg.includes("rgb(255, 255, 255)"))) {
+          el.style.background = "transparent";
+          el.style.backgroundColor = "transparent";
+        }
+      });
+    }
+    const id = setInterval(patchBg, 150);
+    return () => clearInterval(id);
+  }, []);
 
   async function createOrder() {
-    const res = await fetch("/api/paypal/create-order", { method: "POST" });
-    const data = await res.json();
-    if (!data.id) throw new Error("Could not create order");
-    return data.id as string;
+    setPayError("");
+    setProcessing(true);
+    try {
+      const res = await fetch("/api/paypal/create-order", { method: "POST" });
+      const data = await res.json();
+      if (!data.id) throw new Error("Order creation failed");
+      return data.id as string;
+    } catch {
+      setPayError("Could not start payment. Please try again.");
+      throw new Error("order failed");
+    } finally {
+      setProcessing(false);
+    }
   }
 
   async function onApprove(data: { orderID: string }) {
+    setProcessing(true);
+    setPayError("");
     try {
       let authHeader = "";
       if (user) {
@@ -45,9 +73,40 @@ export default function PayPalBox({ onSuccess }: Props) {
         body: JSON.stringify({ orderID: data.orderID }),
       });
       const result = await res.json();
-      if (result.success) onSuccess();
-    } catch {}
+      if (result.success) {
+        onSuccess();
+      } else {
+        setPayError("Payment capture failed. Contact support@tatai.cloud");
+      }
+    } catch {
+      setPayError("Something went wrong. Contact support@tatai.cloud");
+    } finally {
+      setProcessing(false);
+    }
   }
+
+  return (
+    <div ref={wrapperRef} style={{ background: "transparent" }}>
+      {payError && (
+        <p className="text-red-400 text-xs text-center mb-2">{payError}</p>
+      )}
+      {processing && (
+        <p className="text-white/40 text-xs text-center mb-2">Processing…</p>
+      )}
+      <PayPalButtons
+        style={{ layout: "vertical", color: "gold", shape: "pill", label: "pay", height: 48 }}
+        createOrder={createOrder}
+        onApprove={onApprove}
+        onCancel={() => setPayError("")}
+        onError={() => setPayError("PayPal returned an error. Please try again or use a different payment method.")}
+        forceReRender={[]}
+      />
+    </div>
+  );
+}
+
+export default function PayPalBox({ onSuccess }: Props) {
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
 
   const fallback = (
     <a
@@ -62,16 +121,9 @@ export default function PayPalBox({ onSuccess }: Props) {
 
   return (
     <PayPalErrorBoundary fallback={fallback}>
-      <div className="paypal-wrapper">
-        <PayPalScriptProvider options={{ clientId, currency: "USD", intent: "capture" }}>
-          <PayPalButtons
-            style={{ layout: "vertical", color: "gold", shape: "pill", label: "pay", height: 44 }}
-            createOrder={createOrder}
-            onApprove={onApprove}
-            onError={() => {}}
-          />
-        </PayPalScriptProvider>
-      </div>
+      <PayPalScriptProvider options={{ clientId, currency: "USD", intent: "capture" }}>
+        <PayPalInner onSuccess={onSuccess} />
+      </PayPalScriptProvider>
     </PayPalErrorBoundary>
   );
 }
