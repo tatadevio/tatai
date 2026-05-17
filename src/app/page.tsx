@@ -108,11 +108,12 @@ function MessageActions({ text, onRegenerate, isLast }: { text: string; onRegene
   }
 
   function share() {
-    const shareText = text.slice(0, 280) + (text.length > 280 ? "…" : "");
+    const url = "https://www.tatai.cloud";
+    const shareText = text.slice(0, 200) + (text.length > 200 ? "…" : "");
     if (navigator.share) {
-      navigator.share({ title: "tatAI", text: shareText, url: window.location.href }).catch(() => {});
+      navigator.share({ title: "tatAI — Your AI Assistant", text: shareText, url }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(`${shareText}\n\n— tatai.cloud`);
+      navigator.clipboard.writeText(`${shareText}\n\n${url}`);
       setShared(true);
       setTimeout(() => setShared(false), 2000);
     }
