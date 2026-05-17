@@ -172,13 +172,22 @@ export default function Home() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Load sessions from localStorage on mount
+  // Storage key scoped to logged-in user (or empty string for guests)
+  const storageKey = user ? `tatai_sessions_${user.uid}` : null;
+
+  // Load sessions from localStorage when user changes
   useEffect(() => {
+    // Clear UI whenever user changes (login/logout)
+    setSessions([]);
+    setActiveSession(null);
+    setMessages([]);
+    if (!storageKey) return; // Guest — no history
     try {
-      const saved = localStorage.getItem("tatai_sessions");
+      const saved = localStorage.getItem(storageKey);
       if (saved) setSessions(JSON.parse(saved));
     } catch {}
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const activeModelDef = TATAI_MODELS.find(m => m.id === selectedModel) ?? TATAI_MODELS[1];
 
@@ -203,22 +212,23 @@ export default function Home() {
 
   const isLoading = status === "streaming" || status === "submitted";
 
-  // Persist sessions list
+  // Persist sessions list (only for logged-in users)
   useEffect(() => {
-    if (sessions.length > 0) {
-      try { localStorage.setItem("tatai_sessions", JSON.stringify(sessions)); } catch {}
-    }
-  }, [sessions]);
+    if (!storageKey) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(sessions)); } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, storageKey]);
 
-  // Persist messages for active session
+  // Persist messages for active session (only for logged-in users)
   useEffect(() => {
+    if (!storageKey) return;
     if (activeSession && messages.length > 0 && !isLoading) {
       try {
         const serializable = messages.map(m => ({
           ...m,
           parts: m.parts.filter(p => p.type === "text"),
         }));
-        localStorage.setItem(`tatai_msgs_${activeSession}`, JSON.stringify(serializable));
+        localStorage.setItem(`tatai_msgs_${user?.uid}_${activeSession}`, JSON.stringify(serializable));
       } catch {}
     }
   }, [messages, activeSession, isLoading]);
@@ -360,7 +370,7 @@ export default function Home() {
 
   function loadSession(id: string) {
     try {
-      const saved = localStorage.getItem(`tatai_msgs_${id}`);
+      const saved = localStorage.getItem(`tatai_msgs_${user?.uid}_${id}`);
       if (saved) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setMessages(JSON.parse(saved) as any);
@@ -372,13 +382,15 @@ export default function Home() {
   function deleteSession(id: string, e: React.MouseEvent) {
     e.stopPropagation();
     setSessions(p => p.filter(s => s.id !== id));
-    try { localStorage.removeItem(`tatai_msgs_${id}`); } catch {}
+    try { localStorage.removeItem(`tatai_msgs_${user?.uid}_${id}`); } catch {}
     if (activeSession === id) newChat();
     // Update persisted list
-    try {
-      const updated = sessions.filter(s => s.id !== id);
-      localStorage.setItem("tatai_sessions", JSON.stringify(updated));
-    } catch {}
+    if (storageKey) {
+      try {
+        const updated = sessions.filter(s => s.id !== id);
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {}
+    }
   }
 
   function closeSidebarOnMobile() {
