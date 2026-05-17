@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signInWithPopup, GithubAuthProvider, GoogleAuthProvider,
   signInWithPhoneNumber, RecaptchaVerifier, ConfirmationResult,
+  updateProfile,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -147,7 +148,10 @@ export function AuthModal() {
       if (emailMode === "signin") {
         await signInWithEmailAndPassword(firebaseAuth, email, password);
       } else {
-        await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        // Set display name: use entered name, or derive from email
+        const displayName = name.trim() || email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        await updateProfile(cred.user, { displayName });
       }
       setShowLogin(false);
     } catch (err: unknown) {

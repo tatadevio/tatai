@@ -156,6 +156,18 @@ export default function Home() {
 
   const activeModelDef = TATAI_MODELS.find(m => m.id === selectedModel) ?? TATAI_MODELS[1];
 
+  // Always return a human-friendly name (never raw email)
+  function getDisplayName(u: typeof user) {
+    if (!u) return "User";
+    if (u.displayName) return u.displayName;
+    if (u.phoneNumber) return u.phoneNumber;
+    if (u.email) {
+      const local = u.email.split("@")[0];
+      return local.replace(/[._\-+]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+    }
+    return "User";
+  }
+
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
@@ -436,12 +448,12 @@ export default function Home() {
                 <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full flex-shrink-0 object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-[13px] font-semibold">{(user.displayName ?? user.email ?? "U")[0].toUpperCase()}</span>
+                  <span className="text-white text-[13px] font-semibold">{getDisplayName(user)[0].toUpperCase()}</span>
                 </div>
               )}
               <div className="flex-1 text-left min-w-0">
-                <p className="text-[13px] font-medium text-neutral-800 dark:text-white/80 truncate">{user.displayName ?? user.email ?? "User"}</p>
-                {user.displayName && user.email && <p className="text-[11px] text-neutral-400 dark:text-white/30 truncate">{user.email}</p>}
+                <p className="text-[13px] font-medium text-neutral-800 dark:text-white/80 truncate">{getDisplayName(user)}</p>
+                {user.email && <p className="text-[11px] text-neutral-400 dark:text-white/30 truncate">{user.email}</p>}
               </div>
               <ChevronUp className={`w-4 h-4 text-neutral-400 dark:text-white/30 flex-shrink-0 transition-transform duration-200 ${menuOpen ? "rotate-0" : "rotate-180"}`} />
             </button>

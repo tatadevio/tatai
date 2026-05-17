@@ -13,6 +13,17 @@ const THEMES = [
   { value: "system", label: "System", icon: Monitor },
 ] as const;
 
+function getDisplayName(u: ReturnType<typeof useAuth>["user"]) {
+  if (!u) return "Guest";
+  if (u.displayName) return u.displayName;
+  if (u.phoneNumber) return u.phoneNumber;
+  if (u.email) {
+    const local = u.email.split("@")[0];
+    return local.replace(/[._\-+]/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+  }
+  return "User";
+}
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -49,9 +60,9 @@ export default function SettingsPage() {
                 {(user?.displayName ?? user?.email ?? "U")[0].toUpperCase()}
               </div>
             )}
-            <div>
-              <p className="font-semibold text-neutral-900 dark:text-white text-[15px]">{user?.displayName ?? "Guest"}</p>
-              <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5">{user?.email ?? "Not signed in"}</p>
+              <div>
+              <p className="font-semibold text-neutral-900 dark:text-white text-[15px]">{getDisplayName(user)}</p>
+              <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5">{user?.email ?? user?.phoneNumber ?? "Not signed in"}</p>
             </div>
           </div>
         </section>
