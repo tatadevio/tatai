@@ -1,104 +1,266 @@
-export const dynamic = "force-dynamic";
+"use client";
 
-import { redirect } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Users, Crown, TrendingUp, MessageSquare, ArrowLeft,
+  Shield, Eye, EyeOff, RefreshCw, LogOut, Zap, DollarSign
+} from "lucide-react";
 
-export default async function AdminPage() {
-  const supabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseConfigured) redirect("/");
+interface UserRow {
+  uid: string;
+  email: string;
+  name: string;
+  provider: string;
+  plan: "free" | "pro";
+  createdAt: string;
+  lastLogin: string;
+  disabled: boolean;
+}
 
-  const { getAllUsers } = await import("@/lib/db");
-  const users = await getAllUsers();
-  const proUsers = users.filter((u) => u.plan === "pro").length;
-  const freeUsers = users.filter((u) => u.plan === "free").length;
-  const totalMessages = users.reduce((sum, u) => sum + (u.messages_total || 0), 0);
-  const revenue = proUsers * 9.99;
+interface Stats {
+  users: UserRow[];
+  proCount: number;
+  total: number;
+  payments: { uid: string; orderId: string }[];
+}
+
+const PROVIDER_LABEL: Record<string, string> = {
+  "google.com": "Google",
+  "github.com": "GitHub",
+  "password": "Email",
+  "phone": "Phone",
+};
+
+export default function AdminPage() {
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [search, setSearch] = useState("");
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) { setError("Wrong password"); return; }
+      const data = await res.json();
+      setStats(data);
+    } catch {
+      setError("Failed to connect");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) setStats(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!stats) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="flex items-center justify-center gap-2.5 mb-8">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-white font-bold text-xl tracking-tight">tatAI Admin</span>
+          </div>
+
+          <form onSubmit={handleLogin} className="bg-white/[0.04] border border-white/[0.08] rounded-3xl p-7 space-y-4">
+            <div>
+              <label className="block text-white/50 text-xs font-medium mb-2 uppercase tracking-wider">Admin Password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your secret password"
+                  className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-violet-500/60 pr-11"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !password}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+              {loading ? "Verifying…" : "Enter Dashboard"}
+            </button>
+          </form>
+
+          <button onClick={() => router.push("/")} className="mt-4 w-full text-center text-white/25 hover:text-white/50 text-xs transition-colors">
+            ← Back to tatAI
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const freeCount = stats.total - stats.proCount;
+  const revenue = stats.proCount * 9.99;
+  const conversionRate = stats.total > 0 ? ((stats.proCount / stats.total) * 100).toFixed(1) : "0";
+
+  const filtered = stats.users.filter((u) =>
+    !search || u.email.toLowerCase().includes(search.toLowerCase()) || u.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#0a0a0a]/90 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push("/")} className="text-white/30 hover:text-white/70 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+              <Shield className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-bold text-white tracking-tight">tatAI Admin</span>
           </div>
-          <h1 className="text-2xl font-bold">tatAI Admin</h1>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] text-white/50 hover:text-white/80 text-xs transition-colors disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => setStats(null)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] text-white/50 hover:text-red-400 text-xs transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Logout
+          </button>
+        </div>
+      </header>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total Users", value: users.length, color: "from-violet-500 to-blue-500" },
-            { label: "Pro Users", value: proUsers, color: "from-yellow-500 to-orange-500" },
-            { label: "Free Users", value: freeUsers, color: "from-green-500 to-teal-500" },
-            { label: "Est. Revenue", value: `$${revenue.toFixed(2)}`, color: "from-pink-500 to-rose-500" },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <p className="text-white/50 text-sm mb-1">{stat.label}</p>
-              <p className={`text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
-                {stat.value}
-              </p>
+            { label: "Total Users", value: stats.total, icon: Users, color: "from-violet-500 to-indigo-500", glow: "shadow-violet-500/20" },
+            { label: "Pro Users", value: stats.proCount, icon: Crown, color: "from-yellow-500 to-orange-500", glow: "shadow-yellow-500/20" },
+            { label: "Free Users", value: freeCount, icon: Zap, color: "from-green-500 to-teal-500", glow: "shadow-green-500/20" },
+            { label: "Est. Revenue", value: `$${revenue.toFixed(2)}`, icon: DollarSign, color: "from-pink-500 to-rose-500", glow: "shadow-pink-500/20" },
+          ].map((s) => (
+            <div key={s.label} className={`bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 shadow-lg ${s.glow}`}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white/40 text-xs font-medium">{s.label}</p>
+                <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${s.color} flex items-center justify-center`}>
+                  <s.icon className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+              <p className={`text-3xl font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.value}</p>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <p className="text-white/50 text-sm mb-1">Total Messages Sent</p>
-            <p className="text-3xl font-bold text-white">{totalMessages.toLocaleString()}</p>
+        {/* Secondary Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-violet-400" />
+              <p className="text-white/40 text-xs font-medium">Conversion Rate</p>
+            </div>
+            <p className="text-3xl font-bold text-white">{conversionRate}%</p>
+            <p className="text-white/25 text-xs mt-1">Free → Pro</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <p className="text-white/50 text-sm mb-1">Conversion Rate</p>
-            <p className="text-3xl font-bold text-white">
-              {users.length > 0 ? ((proUsers / users.length) * 100).toFixed(1) : 0}%
-            </p>
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="w-4 h-4 text-blue-400" />
+              <p className="text-white/40 text-xs font-medium">Payments Recorded</p>
+            </div>
+            <p className="text-3xl font-bold text-white">{stats.payments.length}</p>
+            <p className="text-white/25 text-xs mt-1">PayPal orders captured</p>
           </div>
         </div>
 
         {/* Users Table */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/5">
-            <h2 className="font-semibold text-white">All Users ({users.length})</h2>
+        <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between gap-4">
+            <h2 className="font-semibold text-white text-sm">All Users <span className="text-white/30 font-normal">({stats.total})</span></h2>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email…"
+              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-1.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-violet-500/50 w-52"
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/5">
-                  {["Name", "Email", "Plan", "Msgs Today", "Msgs Total", "Joined"].map((h) => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider">
-                      {h}
-                    </th>
+                <tr className="border-b border-white/[0.05]">
+                  {["Name", "Email", "Provider", "Plan", "Joined", "Last Login"].map((h) => (
+                    <th key={h} className="px-5 py-3 text-left text-[11px] font-medium text-white/30 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-white/5 transition">
-                    <td className="px-6 py-4 text-sm text-white">{user.name || "—"}</td>
-                    <td className="px-6 py-4 text-sm text-white/70">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.plan === "pro"
-                            ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20"
-                            : "bg-white/10 text-white/60 border border-white/10"
-                        }`}
-                      >
-                        {user.plan === "pro" ? "⭐ Pro" : "Free"}
+              <tbody className="divide-y divide-white/[0.04]">
+                {filtered.map((u) => (
+                  <tr key={u.uid} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="px-5 py-3.5 text-sm text-white font-medium">{u.name || <span className="text-white/25">—</span>}</td>
+                    <td className="px-5 py-3.5 text-sm text-white/60">{u.email || <span className="text-white/25">—</span>}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs text-white/40 bg-white/[0.06] px-2 py-0.5 rounded-full">
+                        {PROVIDER_LABEL[u.provider] ?? u.provider}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-white/70">{user.messages_today ?? 0}</td>
-                    <td className="px-6 py-4 text-sm text-white/70">{user.messages_total ?? 0}</td>
-                    <td className="px-6 py-4 text-sm text-white/40">
-                      {new Date(user.created_at).toLocaleDateString()}
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        u.plan === "pro"
+                          ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20"
+                          : "bg-white/[0.06] text-white/40 border border-white/[0.08]"
+                      }`}>
+                        {u.plan === "pro" ? <><Crown className="w-3 h-3" /> Pro</> : "Free"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-white/30">
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-white/30">
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : "—"}
                     </td>
                   </tr>
                 ))}
-                {users.length === 0 && (
+                {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-white/30 text-sm">
-                      No users yet
+                    <td colSpan={6} className="px-5 py-12 text-center text-white/25 text-sm">
+                      {search ? "No users match your search" : "No users yet"}
                     </td>
                   </tr>
                 )}
@@ -106,6 +268,34 @@ export default async function AdminPage() {
             </table>
           </div>
         </div>
+
+        {/* Payments Table */}
+        {stats.payments.length > 0 && (
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/[0.06]">
+              <h2 className="font-semibold text-white text-sm">PayPal Payments <span className="text-white/30 font-normal">({stats.payments.length})</span></h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/[0.05]">
+                    {["User ID", "PayPal Order ID"].map((h) => (
+                      <th key={h} className="px-5 py-3 text-left text-[11px] font-medium text-white/30 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {stats.payments.map((p) => (
+                    <tr key={p.orderId} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="px-5 py-3.5 text-xs text-white/50 font-mono">{p.uid}</td>
+                      <td className="px-5 py-3.5 text-xs text-white/50 font-mono">{p.orderId}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
