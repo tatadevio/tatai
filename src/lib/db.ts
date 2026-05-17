@@ -15,7 +15,7 @@ export interface UserRecord {
   paypal_order_id?: string;
 }
 
-export const FREE_LIMIT = 10;
+export const FREE_LIMIT = 50;
 
 export async function upsertUser(clerkId: string, email: string, name: string) {
   const db = getSupabaseAdmin();
