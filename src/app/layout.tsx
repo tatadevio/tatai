@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     description: APP_DESC,
     images: [
       {
-        url: `${APP_URL}/opengraph-image`,
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: APP_TITLE,
@@ -82,7 +82,7 @@ export const metadata: Metadata = {
     creator: "@tataicloud",
     title: APP_TITLE,
     description: APP_DESC,
-    images: [`${APP_URL}/opengraph-image`],
+    images: ["/opengraph-image"],
   },
 
   // App metadata
