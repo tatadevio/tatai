@@ -30,7 +30,7 @@ export default function PayPalBox({ onSuccess }: Props) {
     }
   }
 
-  if (!clientId || clientId.includes("your_") || clientId.length < 20) {
+  if (!clientId || clientId === "your_paypal_client_id" || clientId.length < 10) {
     return (
       <a
         href="mailto:support@tatai.cloud"
