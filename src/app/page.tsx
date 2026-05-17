@@ -65,6 +65,18 @@ const BOTTOM_LINKS = [
 
 interface Session { id: string; title: string; }
 
+// Maps MIME type → { label, color, bg }
+function fileTypeInfo(mime = "") {
+  if (mime.startsWith("image/")) return { label: "Image", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "🖼️" };
+  if (mime === "application/pdf") return { label: "PDF", color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-500/10", icon: "📄" };
+  if (mime.includes("word") || mime.includes("document")) return { label: "Word", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "📝" };
+  if (mime.includes("sheet") || mime.includes("excel") || mime === "text/csv") return { label: "Spreadsheet", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-500/10", icon: "📊" };
+  if (mime.startsWith("text/")) return { label: "Text", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📃" };
+  if (mime.includes("javascript") || mime.includes("typescript") || mime.includes("python") || mime.includes("json")) return { label: "Code", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-500/10", icon: "💻" };
+  if (mime.includes("zip") || mime.includes("archive")) return { label: "Archive", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-500/10", icon: "📦" };
+  return { label: "File", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📎" };
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -126,6 +138,10 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachPreviews, setAttachPreviews] = useState<string[]>([]);
+  // Track filenames separately so we can show them after send
+  const pendingFileNames = useRef<string[]>([]);
+  // Map messageId → filenames array for display
+  const [msgFileNames, setMsgFileNames] = useState<Record<string, string[]>>({});
   const [selectedModel, setSelectedModel] = useState<ModelId>("tatai-smart");
   const [modelDropOpen, setModelDropOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -215,6 +231,7 @@ export default function Home() {
     if (newFiles.length === 0) return;
     setAttachments((prev) => [...prev, ...newFiles]);
     newFiles.forEach((file) => {
+      pendingFileNames.current.push(file.name);
       if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => setAttachPreviews((p) => [...p, e.target?.result as string]);
@@ -292,13 +309,27 @@ export default function Home() {
     }
 
     if (attachments.length > 0) {
+      const names = [...pendingFileNames.current];
       const dt = new DataTransfer();
       attachments.forEach((f) => dt.items.add(f));
+      // Store names keyed by timestamp so we can look them up when rendering
+      const tempKey = sessionId!;
+      // We'll store names after the message is added; use a small delay
+      const capturedNames = names;
+      setTimeout(() => {
+        setMsgFileNames(prev => {
+          // Find the latest user message id from messages
+          const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+          if (lastUserMsg) return { ...prev, [lastUserMsg.id]: capturedNames };
+          return prev;
+        });
+      }, 200);
       sendMessage({ text, files: dt.files });
     } else {
       sendMessage({ text });
     }
 
+    pendingFileNames.current = [];
     setInput("");
     setAttachments([]);
     setAttachPreviews([]);
@@ -584,27 +615,62 @@ export default function Home() {
 
                   <div className={`flex-1 min-w-0 ${m.role === "user" ? "flex justify-end" : ""}`}>
                     {m.role === "user" ? (
-                      <div className="max-w-[88%] sm:max-w-[80%] flex flex-col gap-1.5 items-end">
+                      <div className="max-w-[88%] sm:max-w-[80%] flex flex-col gap-2 items-end">
                         {/* File/image parts */}
                         {m.parts.filter(p => p.type === "file").map((part, i) => {
                           if (part.type !== "file") return null;
-                          const isImage = part.mediaType?.startsWith("image/");
+                          const mime = part.mediaType ?? "";
+                          const isImage = mime.startsWith("image/");
+                          const storedNames = msgFileNames[m.id];
+                          const fileName = storedNames?.[i] ?? null;
+
                           if (isImage) {
-                            return <img key={i} src={part.url ?? ""} alt="uploaded" className="max-w-[260px] sm:max-w-[320px] rounded-2xl rounded-tr-sm object-cover shadow-sm" />;
+                            return (
+                              <div key={i} className="relative group">
+                                <img
+                                  src={part.url ?? ""}
+                                  alt={fileName ?? "uploaded image"}
+                                  className="max-w-[220px] sm:max-w-[300px] rounded-2xl rounded-tr-sm object-cover shadow-sm border border-black/5 dark:border-white/[0.06]"
+                                />
+                                {fileName && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent rounded-b-2xl px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <p className="text-white text-[11px] truncate">{fileName}</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
                           }
+
+                          const info = fileTypeInfo(mime);
+                          const label = fileName ?? info.label;
+                          const ext = fileName ? fileName.split(".").pop()?.toUpperCase() : mime.split("/").pop()?.toUpperCase();
+
                           return (
-                            <div key={i} className="flex items-center gap-2 bg-neutral-100 dark:bg-white/[0.08] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-sm text-neutral-700 dark:text-white/70 border border-neutral-200/60 dark:border-white/[0.06]">
-                              <File className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-                              <span className="text-[13px] font-medium">{String(part.url ?? "File").split("/").pop()}</span>
+                            <div key={i} className="flex items-center gap-3 bg-neutral-100 dark:bg-[#2a2a2a] border border-neutral-200/70 dark:border-white/[0.07] rounded-2xl rounded-tr-sm px-3.5 py-2.5 min-w-[160px] max-w-[260px]">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${info.bg}`}>
+                                <span className="text-[18px] leading-none">{info.icon}</span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className={`text-[13px] font-semibold truncate ${info.color}`}>{label}</p>
+                                <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">{ext} file</p>
+                              </div>
                             </div>
                           );
                         })}
-                        {/* Text part */}
-                        {m.parts.some(p => p.type === "text" && (p as {type:"text";text:string}).text) && (
-                          <div className="bg-neutral-100 dark:bg-[#2a2a2a] text-neutral-900 dark:text-white/90 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] leading-[1.6] whitespace-pre-wrap font-[400] tracking-[-0.01em] shadow-sm">
-                            {m.parts.map((part, i) => part.type === "text" ? <span key={i}>{part.text}</span> : null)}
-                          </div>
-                        )}
+                        {/* Text part — only show if has actual text content */}
+                        {(() => {
+                          const textContent = m.parts
+                            .filter(p => p.type === "text")
+                            .map(p => p.type === "text" ? p.text : "")
+                            .join("")
+                            .trim();
+                          if (!textContent) return null;
+                          return (
+                            <div className="bg-neutral-100 dark:bg-[#2a2a2a] text-neutral-900 dark:text-white/90 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] leading-[1.6] whitespace-pre-wrap font-[400] tracking-[-0.01em] shadow-sm">
+                              {textContent}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className="text-neutral-800 dark:text-neutral-100 text-[14.5px] leading-[1.7] tracking-[-0.01em]">
@@ -642,27 +708,35 @@ export default function Home() {
               {/* Attachment previews */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 px-4 pt-3">
-                  {attachments.map((file, i) => (
-                    <div key={i} className="relative group">
-                      {attachPreviews[i] ? (
-                        <img src={attachPreviews[i]} alt={file.name} className="w-16 h-16 rounded-xl object-cover border border-neutral-200 dark:border-white/10" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-neutral-100 dark:bg-white/[0.08] border border-neutral-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 px-1">
-                          <File className="w-5 h-5 text-neutral-400 dark:text-neutral-500" />
-                          <span className="text-[9px] text-neutral-400 dark:text-neutral-500 truncate w-full text-center">{file.name.split(".").pop()?.toUpperCase()}</span>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => removeAttachment(i)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-800 dark:bg-neutral-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                      >
-                        <XIcon className="w-3 h-3" />
-                      </button>
-                      {!attachPreviews[i] && (
-                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5 w-16 truncate text-center">{file.name}</p>
-                      )}
-                    </div>
-                  ))}
+                  {attachments.map((file, i) => {
+                    const info = fileTypeInfo(file.type);
+                    const ext = file.name.split(".").pop()?.toUpperCase() ?? "FILE";
+                    return (
+                      <div key={i} className="relative group flex-shrink-0">
+                        {attachPreviews[i] ? (
+                          /* Image preview */
+                          <div className="w-14 h-14 rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10">
+                            <img src={attachPreviews[i]} alt={file.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          /* Non-image file card */
+                          <div className={`w-14 h-14 rounded-xl border border-neutral-200 dark:border-white/10 flex flex-col items-center justify-center gap-0.5 ${info.bg}`}>
+                            <span className="text-[20px] leading-none">{info.icon}</span>
+                            <span className={`text-[8px] font-bold tracking-wide ${info.color}`}>{ext}</span>
+                          </div>
+                        )}
+                        {/* Remove button */}
+                        <button
+                          onClick={() => removeAttachment(i)}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-800 dark:bg-neutral-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        >
+                          <XIcon className="w-3 h-3" />
+                        </button>
+                        {/* Filename tooltip */}
+                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-1 w-14 truncate text-center leading-tight">{file.name}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
