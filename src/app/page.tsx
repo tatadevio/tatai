@@ -65,16 +65,25 @@ const BOTTOM_LINKS = [
 
 interface Session { id: string; title: string; }
 
-// Maps MIME type → { label, color, bg }
-function fileTypeInfo(mime = "") {
+// Maps MIME type (and optional filename) → { label, color, bg, icon }
+function fileTypeInfo(mime = "", fileName = "") {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
   if (mime.startsWith("image/")) return { label: "Image", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "🖼️" };
-  if (mime === "application/pdf") return { label: "PDF", color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-500/10", icon: "📄" };
-  if (mime.includes("word") || mime.includes("document")) return { label: "Word", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "📝" };
-  if (mime.includes("sheet") || mime.includes("excel") || mime === "text/csv") return { label: "Spreadsheet", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-500/10", icon: "📊" };
-  if (mime.startsWith("text/")) return { label: "Text", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📃" };
-  if (mime.includes("javascript") || mime.includes("typescript") || mime.includes("python") || mime.includes("json")) return { label: "Code", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-500/10", icon: "💻" };
-  if (mime.includes("zip") || mime.includes("archive")) return { label: "Archive", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-500/10", icon: "📦" };
-  return { label: "File", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📎" };
+  if (mime === "application/pdf" || ext === "pdf") return { label: "PDF", color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-500/10", icon: "📄" };
+  if (mime.includes("word") || mime.includes("document") || ["doc","docx"].includes(ext)) return { label: "Word", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "📝" };
+  if (mime.includes("sheet") || mime.includes("excel") || ["xls","xlsx","csv"].includes(ext) || mime === "text/csv") return { label: "Spreadsheet", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-500/10", icon: "📊" };
+  if (mime.includes("presentation") || mime.includes("powerpoint") || ["ppt","pptx"].includes(ext)) return { label: "Slides", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-500/10", icon: "📑" };
+  if (mime === "text/html" || ext === "html" || ext === "htm") return { label: "HTML", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-500/10", icon: "🌐" };
+  if (mime === "text/css" || ext === "css") return { label: "CSS", color: "text-blue-500 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "🎨" };
+  if (mime.includes("javascript") || ["js","jsx","ts","tsx","mjs"].includes(ext)) return { label: ext.toUpperCase() || "JS", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-500/10", icon: "💛" };
+  if (mime.includes("typescript") || ["ts","tsx"].includes(ext)) return { label: "TypeScript", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", icon: "💙" };
+  if (mime.includes("python") || ext === "py") return { label: "Python", color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-500/10", icon: "🐍" };
+  if (mime.includes("json") || ext === "json") return { label: "JSON", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-500/10", icon: "🗂️" };
+  if (["sh","bash","zsh"].includes(ext) || mime.includes("shell")) return { label: "Shell", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "⚡" };
+  if (["c","cpp","h","java","go","rs","rb","php","swift","kt"].includes(ext) || mime.includes("javascript") || mime.includes("python")) return { label: ext.toUpperCase() || "Code", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-500/10", icon: "💻" };
+  if (mime.includes("zip") || mime.includes("archive") || mime.includes("tar") || ["zip","rar","gz","tar","7z"].includes(ext)) return { label: "Archive", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-500/10", icon: "📦" };
+  if (mime.startsWith("text/") || ["txt","md","log"].includes(ext)) return { label: ext === "md" ? "Markdown" : "Text", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📃" };
+  return { label: ext.toUpperCase() || "File", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📎" };
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -641,8 +650,8 @@ export default function Home() {
                             );
                           }
 
-                          const info = fileTypeInfo(mime);
-                          const label = fileName ?? info.label;
+                          const info = fileTypeInfo(mime, fileName ?? "");
+                          const label = fileName ? fileName : info.label;
                           const ext = fileName ? fileName.split(".").pop()?.toUpperCase() : mime.split("/").pop()?.toUpperCase();
 
                           return (
@@ -709,7 +718,7 @@ export default function Home() {
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 px-4 pt-3">
                   {attachments.map((file, i) => {
-                    const info = fileTypeInfo(file.type);
+                    const info = fileTypeInfo(file.type, file.name);
                     const ext = file.name.split(".").pop()?.toUpperCase() ?? "FILE";
                     return (
                       <div key={i} className="relative group flex-shrink-0">
