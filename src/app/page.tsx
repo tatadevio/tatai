@@ -98,7 +98,7 @@ function fileTypeInfo(mime = "", fileName = "") {
   return { label: ext.toUpperCase() || "File", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📎" };
 }
 
-function MessageActions({ text, onRegenerate, isLast }: { text: string; onRegenerate?: () => void; isLast?: boolean }) {
+function MessageActions({ text, onRegenerate, isLast, sessionId }: { text: string; onRegenerate?: () => void; isLast?: boolean; sessionId?: string | null }) {
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<"up" | "down" | null>(null);
   const [shared, setShared] = useState(false);
@@ -110,7 +110,9 @@ function MessageActions({ text, onRegenerate, isLast }: { text: string; onRegene
   }
 
   function share() {
-    const url = window.location.href;
+    const url = sessionId
+      ? `${window.location.origin}/?chat=${sessionId}`
+      : window.location.href;
     if (navigator.share) {
       navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
     } else {
@@ -1055,6 +1057,7 @@ export default function Home() {
                           text={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")}
                           isLast={m.id === messages[messages.length - 1]?.id}
                           onRegenerate={regenerateLast}
+                          sessionId={activeSession}
                         />
                       </div>
                     )}
