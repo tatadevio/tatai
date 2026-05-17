@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signInWithPopup, GoogleAuthProvider, updateProfile, sendPasswordResetEmail,
+  signInWithCustomToken,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-import { X, Eye, EyeOff, Loader2 } from "lucide-react";
+import { X, Eye, EyeOff, Loader2, QrCode } from "lucide-react";
 import { TataILogo } from "./Logo";
+import QRCode from "qrcode";
 
 type Mode = "signin" | "signup";
 
@@ -39,9 +41,102 @@ function consumeRedirect(router: ReturnType<typeof useRouter>) {
   }
 }
 
+function QRLoginPanel({ onSuccess }: { onSuccess: () => void }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<"loading" | "pending" | "expired" | "confirmed">("loading");
+  const tokenRef = useRef<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function initQR() {
+    setStatus("loading");
+    setQrDataUrl(null);
+    try {
+      const res = await fetch("/api/qr/create", { method: "POST" });
+      const { token } = await res.json();
+      tokenRef.current = token;
+      const deepLink = `tatai://qr-login?token=${token}`;
+      const dataUrl = await QRCode.toDataURL(deepLink, { width: 220, margin: 2, color: { dark: "#111", light: "#fff" } });
+      setQrDataUrl(dataUrl);
+      setStatus("pending");
+
+      // poll every 2s
+      pollRef.current = setInterval(async () => {
+        const r = await fetch(`/api/qr/status?token=${token}`);
+        const data = await r.json();
+        if (data.status === "confirmed" && data.customToken) {
+          clearInterval(pollRef.current!);
+          setStatus("confirmed");
+          const auth = getFirebaseAuth();
+          if (auth) await signInWithCustomToken(auth, data.customToken);
+          onSuccess();
+        } else if (data.status === "expired" || data.status === "not_found") {
+          clearInterval(pollRef.current!);
+          setStatus("expired");
+        }
+      }, 2000);
+    } catch {
+      setStatus("expired");
+    }
+  }
+
+  useEffect(() => {
+    initQR();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center gap-4 py-2">
+      <p className="text-sm text-neutral-500 dark:text-white/40 text-center leading-relaxed">
+        Open <span className="font-semibold text-neutral-700 dark:text-white/70">tatAI</span> on your phone<br />
+        and scan to log in instantly
+      </p>
+
+      <div className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-white/10 bg-white p-3 shadow-lg">
+        {status === "loading" && (
+          <div className="w-[220px] h-[220px] flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-neutral-300" />
+          </div>
+        )}
+        {status === "pending" && qrDataUrl && (
+          <img src={qrDataUrl} alt="QR code" width={220} height={220} />
+        )}
+        {status === "expired" && (
+          <div className="w-[220px] h-[220px] flex flex-col items-center justify-center gap-3">
+            <p className="text-sm text-neutral-400 text-center">QR expired</p>
+            <button
+              onClick={initQR}
+              className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-500 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+        )}
+        {status === "confirmed" && (
+          <div className="w-[220px] h-[220px] flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-green-600">Logged in!</p>
+          </div>
+        )}
+      </div>
+
+      {status === "pending" && (
+        <div className="flex items-center gap-2 text-xs text-neutral-400 dark:text-white/25">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          Waiting for scan… expires in 5 min
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AuthModal() {
   const { showLogin, setShowLogin } = useAuth();
   const router = useRouter();
+  const [tab, setTab] = useState<"auth" | "qr">("auth");
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -129,16 +224,29 @@ export function AuthModal() {
             <TataILogo className="w-7 h-7" />
             <span className="font-bold text-[15px] text-neutral-900 dark:text-white">Sign in to tatAI</span>
           </div>
-          <button
-            onClick={() => setShowLogin(false)}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] text-neutral-400 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTab(t => t === "qr" ? "auth" : "qr")}
+              title={tab === "qr" ? "Email / Google" : "Login with QR code"}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${tab === "qr" ? "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400" : "hover:bg-neutral-100 dark:hover:bg-white/[0.08] text-neutral-400"}`}
+            >
+              <QrCode className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setShowLogin(false)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] text-neutral-400 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="px-5 py-5 space-y-4">
-          {/* Google */}
+          {tab === "qr" && (
+            <QRLoginPanel onSuccess={() => { setShowLogin(false); consumeRedirect(router); }} />
+          )}
+          {tab === "qr" && <div />}
+          {tab === "auth" && <>{/* Google */}
           <button
             onClick={handleGoogle}
             disabled={loading}
@@ -272,6 +380,7 @@ export function AuthModal() {
               <a href="/privacy" target="_blank" className="underline hover:text-neutral-600 dark:hover:text-white/40">Privacy Policy</a>
             </p>
           )}
+          </>}
         </div>
       </div>
     </div>

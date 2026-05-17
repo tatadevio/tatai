@@ -5,8 +5,8 @@ const PAYPAL_BASE = process.env.PAYPAL_MODE === "live"
   : "https://api-m.sandbox.paypal.com";
 
 async function getAccessToken() {
-  const clientId = process.env.PAYPAL_CLIENT_ID!;
-  const secret = process.env.PAYPAL_CLIENT_SECRET!;
+  const clientId = (process.env.PAYPAL_CLIENT_ID ?? "").trim();
+  const secret = (process.env.PAYPAL_CLIENT_SECRET ?? "").trim();
   const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
     method: "POST",
     headers: {

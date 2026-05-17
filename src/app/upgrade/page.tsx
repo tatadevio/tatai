@@ -54,6 +54,48 @@ export default function UpgradePage() {
     }
   }, [user]);
 
+  // Handle PayPal redirect return — capture payment
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const paypalStatus = params.get("paypal");
+    const token = params.get("token"); // PayPal passes this as the order ID
+
+    if (paypalStatus === "return" && token) {
+      // Remove query params from URL
+      window.history.replaceState({}, "", "/upgrade");
+
+      const capture = async () => {
+        try {
+          let authHeader = "";
+          if (user) {
+            const idToken = await user.getIdToken();
+            authHeader = `Bearer ${idToken}`;
+          }
+          const res = await fetch("/api/paypal/capture-order", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authHeader ? { Authorization: authHeader } : {}),
+            },
+            body: JSON.stringify({ orderID: token }),
+          });
+          const result = await res.json();
+          if (result.success) {
+            setSuccess(true);
+            setTimeout(() => router.push("/"), 2500);
+          }
+        } catch { /* silent */ }
+      };
+
+      if (user) capture();
+      // If user isn't loaded yet, wait for auth
+    } else if (paypalStatus === "cancel") {
+      window.history.replaceState({}, "", "/upgrade");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0a0a0a] flex flex-col">
       <header className="flex items-center gap-3 px-6 py-4 border-b border-neutral-200 dark:border-white/[0.06] bg-white dark:bg-[#111]">
