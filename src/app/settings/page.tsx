@@ -25,11 +25,31 @@ function getDisplayName(u: ReturnType<typeof useAuth>["user"]) {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, loading, setShowLogin } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Redirect to login if not signed in
+  useEffect(() => {
+    if (!loading && !user) {
+      setShowLogin(true);
+      router.replace("/");
+    }
+  }, [user, loading, setShowLogin, router]);
+
+  // Show nothing while checking auth or redirecting
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-neutral-50 dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <TataILogo className="w-10 h-10 animate-pulse" />
+          <p className="text-sm text-neutral-400 dark:text-white/30">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0a0a0a]">
