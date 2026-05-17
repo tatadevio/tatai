@@ -77,6 +77,76 @@ const BOTTOM_LINK_DEFS = [
 
 interface Session { id: string; title: string; pinned?: boolean; }
 
+// ── Custom Assistants ──────────────────────────────────────────────────────
+const ASSISTANTS = [
+  {
+    id: "general",
+    name: "tatAI",
+    emoji: "✨",
+    desc: "General intelligent assistant",
+    system: "",
+    proOnly: false,
+  },
+  {
+    id: "developer",
+    name: "Dev Mode",
+    emoji: "💻",
+    desc: "Expert software engineer — code, debug, architect",
+    system: "You are an expert software engineer and architect. Focus on clean, production-ready code. Always explain your code. Prefer best practices. When asked to build something, ask clarifying questions first.",
+    proOnly: false,
+  },
+  {
+    id: "medical",
+    name: "Health Guide",
+    emoji: "🏥",
+    desc: "Medical & health information assistant",
+    system: "You are a knowledgeable medical information assistant. Provide clear health information based on established medical knowledge. Always recommend consulting a licensed doctor for personal medical decisions. Never diagnose. Be empathetic and clear.",
+    proOnly: false,
+  },
+  {
+    id: "legal",
+    name: "Legal Advisor",
+    emoji: "⚖️",
+    desc: "Legal guidance & document analysis",
+    system: "You are a legal information assistant with broad knowledge of law. Help users understand legal concepts, analyze contracts, and explain their rights. Always remind users to consult a licensed attorney for their specific situation. Be precise and clear.",
+    proOnly: true,
+  },
+  {
+    id: "marketing",
+    name: "Growth Expert",
+    emoji: "📈",
+    desc: "Marketing, copywriting & growth strategy",
+    system: "You are a world-class marketing strategist and copywriter. Help with brand strategy, ad copy, social media, SEO, email campaigns, and growth hacking. Be creative, data-driven, and focus on ROI. Ask about the target audience first.",
+    proOnly: true,
+  },
+  {
+    id: "teacher",
+    name: "Tutor",
+    emoji: "🎓",
+    desc: "Patient teacher for any subject",
+    system: "You are a patient, encouraging tutor. Explain concepts step by step, use simple language, give examples, and check for understanding. Adapt your teaching style to the student's level. Make learning engaging and fun.",
+    proOnly: false,
+  },
+  {
+    id: "finance",
+    name: "Finance Advisor",
+    emoji: "💰",
+    desc: "Financial planning & investment guidance",
+    system: "You are a financial education assistant with expertise in personal finance, investing, budgeting, and economics. Help users understand financial concepts and make informed decisions. Always clarify you are not a licensed financial advisor.",
+    proOnly: true,
+  },
+  {
+    id: "writer",
+    name: "Creative Writer",
+    emoji: "✍️",
+    desc: "Creative writing, storytelling & editing",
+    system: "You are a master creative writer and editor. Help with stories, scripts, poetry, blog posts, essays, and any written content. Be imaginative, engaging, and tailor your style to what the user needs. Offer creative suggestions freely.",
+    proOnly: false,
+  },
+] as const;
+
+type AssistantId = (typeof ASSISTANTS)[number]["id"];
+
 // Maps MIME type (and optional filename) → { label, color, bg, icon }
 function fileTypeInfo(mime = "", fileName = "") {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -274,6 +344,10 @@ export default function Home() {
   const [modelDropOpen, setModelDropOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
+  const [selectedAssistant, setSelectedAssistant] = useState<AssistantId>("general");
+  const [showAssistants, setShowAssistants] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const convSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Voice ──
   const [voiceActive, setVoiceActive] = useState(false);
@@ -316,17 +390,33 @@ export default function Home() {
     }
   }, [activeSession]);
 
-  // Load sessions from localStorage when user changes
+  // Load sessions — Redis for logged-in users, localStorage for guests
   useEffect(() => {
-    // Clear UI whenever user changes (login/logout)
     setSessions([]);
     setActiveSession(null);
     setMessages([]);
-    if (!storageKey) return; // Guest — no history
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) setSessions(JSON.parse(saved));
-    } catch {}
+    if (!user) return;
+
+    // Try Redis first (cloud history)
+    user.getIdToken().then(token =>
+      fetch("/api/conversations", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            setSessions(data.map((s: any) => ({ id: s.id, title: s.title ?? "Chat", pinned: s.pinned })));
+          } else if (storageKey) {
+            // Fallback: migrate from localStorage
+            const saved = localStorage.getItem(storageKey);
+            if (saved) setSessions(JSON.parse(saved));
+          }
+        })
+        .catch(() => {
+          if (storageKey) {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) { try { setSessions(JSON.parse(saved)); } catch {} }
+          }
+        })
+    ).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
@@ -361,14 +451,39 @@ export default function Home() {
     };
   }, []);
 
+  const assistantDef = ASSISTANTS.find(a => a.id === selectedAssistant) ?? ASSISTANTS[0];
+  const effectiveAssistant = (assistantDef.proOnly && !isPro) ? ASSISTANTS[0] : assistantDef;
+
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { model: activeModelDef.apiModel, language: chatLanguage },
+      body: {
+        model: activeModelDef.apiModel,
+        language: chatLanguage,
+        assistantSystem: effectiveAssistant.system || undefined,
+      },
     }),
   });
 
   const isLoading = status === "streaming" || status === "submitted";
+
+  // Auto-save conversation to Redis after each message
+  useEffect(() => {
+    if (!user || !activeSession || messages.length === 0) return;
+    if (convSaveTimer.current) clearTimeout(convSaveTimer.current);
+    convSaveTimer.current = setTimeout(async () => {
+      try {
+        const token = await user.getIdToken();
+        const title = sessions.find(s => s.id === activeSession)?.title ?? "Chat";
+        await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id: activeSession, title, messages }),
+        });
+      } catch {}
+    }, 1500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, activeSession]);
 
   // Persist sessions list (only for logged-in users)
   useEffect(() => {
@@ -563,8 +678,44 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isLoading]);
 
+  async function handleGenerateImage(prompt: string) {
+    setGeneratingImage(true);
+    const sessionId = activeSession ?? Date.now().toString();
+    if (!activeSession) {
+      setSessions(p => [{ id: sessionId, title: `Image: ${prompt.slice(0, 35)}` }, ...p]);
+      setActiveSession(sessionId);
+    }
+    // Show user message
+    sendMessage({ text: `🎨 Generate image: ${prompt}` });
+    setInput("");
+    try {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        sendMessage({ text: `![Generated image](${data.url})\n\n*"${data.revisedPrompt || prompt}"*` });
+      } else {
+        sendMessage({ text: `⚠️ Image generation failed: ${data.error ?? "Unknown error"}` });
+      }
+    } catch {
+      sendMessage({ text: "⚠️ Could not generate image. Try again." });
+    } finally {
+      setGeneratingImage(false);
+    }
+  }
+
   function handleSend() {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
+
+    // Detect /image command
+    const imageMatch = input.trim().match(/^\/image\s+(.+)$/i);
+    if (imageMatch) {
+      handleGenerateImage(imageMatch[1]);
+      return;
+    }
     const text = input.trim();
     const titleText = text || (attachments[0]?.name ?? "File upload");
 
@@ -584,14 +735,29 @@ export default function Home() {
       const imageFiles = attachments.filter(f => f.type.startsWith("image/"));
       const textFiles = attachments.filter(f => !f.type.startsWith("image/"));
 
-      // Read all text files as strings, then send
+      // Read all text files; PDFs go through parse-pdf API, others use FileReader
       const readPromises = textFiles.map(f => new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(
-          `\n\n--- File: ${f.name} ---\n${e.target?.result as string}\n--- End of ${f.name} ---`
-        );
-        reader.onerror = () => resolve(`\n\n[Could not read file: ${f.name}]`);
-        reader.readAsText(f);
+        if (f.type === "application/pdf" || f.name.endsWith(".pdf")) {
+          const form = new FormData();
+          form.append("file", f);
+          fetch("/api/parse-pdf", { method: "POST", body: form })
+            .then(r => r.json())
+            .then(data => {
+              if (data.text) {
+                resolve(`\n\n--- PDF: ${f.name} (${data.pages} pages) ---\n${data.text}\n--- End of ${f.name} ---`);
+              } else {
+                resolve(`\n\n[Could not extract text from ${f.name}: ${data.error ?? "unknown error"}]`);
+              }
+            })
+            .catch(() => resolve(`\n\n[Failed to read PDF: ${f.name}]`));
+        } else {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(
+            `\n\n--- File: ${f.name} ---\n${e.target?.result as string}\n--- End of ${f.name} ---`
+          );
+          reader.onerror = () => resolve(`\n\n[Could not read file: ${f.name}]`);
+          reader.readAsText(f);
+        }
       }));
 
       Promise.all(readPromises).then((fileContents) => {
@@ -646,14 +812,21 @@ export default function Home() {
     if (textareaRef.current) textareaRef.current.focus();
   }
 
-  function loadSession(id: string) {
+  async function loadSession(id: string) {
+    setActiveSession(id);
+    setMessages([]);
     try {
-      const saved = localStorage.getItem(`tatai_msgs_${user?.uid}_${id}`);
-      if (saved) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setMessages(JSON.parse(saved) as any);
+      if (user) {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/conversations?id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages) { setMessages(data.messages); return; }
+        }
       }
-      setActiveSession(id);
+      // Fallback: localStorage
+      const saved = localStorage.getItem(`tatai_msgs_${user?.uid}_${id}`);
+      if (saved) setMessages(JSON.parse(saved) as any);
     } catch {}
   }
 
@@ -661,6 +834,11 @@ export default function Home() {
     e.stopPropagation();
     setSessions(p => p.filter(s => s.id !== id));
     try { localStorage.removeItem(`tatai_msgs_${user?.uid}_${id}`); } catch {}
+    if (user) {
+      user.getIdToken().then(token =>
+        fetch(`/api/conversations?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } })
+      ).catch(() => {});
+    }
     if (activeSession === id) newChat();
     // Update persisted list
     if (storageKey) {
@@ -753,6 +931,42 @@ export default function Home() {
           <button onClick={newChat} title="New chat" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-500 dark:text-white/50">
             <Plus className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Assistants panel toggle */}
+        <div className="px-3 pb-1">
+          <button
+            onClick={() => setShowAssistants(v => !v)}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] font-medium text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/[0.06] transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+            <span>Assistants</span>
+            <span className="ml-auto text-[10px] bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 px-1.5 py-0.5 rounded-full">
+              {effectiveAssistant.emoji} {effectiveAssistant.name}
+            </span>
+            <ChevronDown className={`w-3 h-3 transition-transform ${showAssistants ? "rotate-180" : ""}`} />
+          </button>
+          {showAssistants && (
+            <div className="mt-1 space-y-0.5 pb-1">
+              {ASSISTANTS.map(a => {
+                const locked = a.proOnly && !isPro;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => { if (!locked) { setSelectedAssistant(a.id as AssistantId); setShowAssistants(false); } }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-[13px] transition-colors text-left
+                      ${selectedAssistant === a.id ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300" : "hover:bg-neutral-100 dark:hover:bg-white/[0.05] text-neutral-700 dark:text-white/70"}
+                      ${locked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <span className="text-base leading-none">{a.emoji}</span>
+                    <span className="font-medium flex-1">{a.name}</span>
+                    {a.proOnly && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                    {selectedAssistant === a.id && <Check className="w-3 h-3 flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Chat history */}
@@ -1210,6 +1424,20 @@ export default function Home() {
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
                   >
                     <ImageIcon className="w-4 h-4" />
+                  </button>
+
+                  {/* Image generation button */}
+                  <button
+                    onClick={() => {
+                      const prompt = input.trim();
+                      if (prompt) { handleGenerateImage(prompt); }
+                      else { setInput("/image "); textareaRef.current?.focus(); }
+                    }}
+                    disabled={generatingImage || isLoading}
+                    title="Generate image with AI"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-400 transition-colors disabled:opacity-40"
+                  >
+                    {generatingImage ? <span className="w-3.5 h-3.5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   </button>
 
                 </div>
