@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
+import { WelcomeGate } from "@/components/WelcomeGate";
 import { VisitorBeacon } from "@/components/VisitorBeacon";
 import "./globals.css";
 
@@ -134,6 +135,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
             <AuthModal />
+            <WelcomeGate />
             <VisitorBeacon />
           </AuthProvider>
         </ThemeProvider>
