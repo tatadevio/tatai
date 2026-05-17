@@ -1015,26 +1015,28 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Voice button */}
-                <button
-                  onClick={startVoiceMode}
-                  title="Voice chat"
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
+                {/* Right actions */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={startVoiceMode}
+                    title="Voice chat"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                  >
+                    <Mic className="w-[17px] h-[17px]" />
+                  </button>
 
-                <button
-                  onClick={handleSend}
-                  disabled={(!input.trim() && attachments.length === 0) || isLoading}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                    (input.trim() || attachments.length > 0) && !isLoading
-                      ? "bg-neutral-900 dark:bg-white hover:bg-neutral-700 dark:hover:bg-neutral-200"
-                      : "bg-neutral-200 dark:bg-neutral-600 cursor-not-allowed"
-                  }`}
-                >
-                  <Send className={`w-3.5 h-3.5 ${(input.trim() || attachments.length > 0) && !isLoading ? "text-white dark:text-neutral-900" : "text-neutral-400"}`} />
-                </button>
+                  <button
+                    onClick={handleSend}
+                    disabled={(!input.trim() && attachments.length === 0) || isLoading}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      (input.trim() || attachments.length > 0) && !isLoading
+                        ? "bg-neutral-900 dark:bg-white hover:bg-neutral-700 dark:hover:bg-neutral-200"
+                        : "bg-neutral-200 dark:bg-neutral-600 cursor-not-allowed"
+                    }`}
+                  >
+                    <Send className={`w-3.5 h-3.5 ${(input.trim() || attachments.length > 0) && !isLoading ? "text-white dark:text-neutral-900" : "text-neutral-400"}`} />
+                  </button>
+                </div>
               </div>
             </div>
             <p className="text-center text-neutral-400 dark:text-neutral-500/60 text-[11px] mt-2 tracking-wide">
