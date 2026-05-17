@@ -47,9 +47,10 @@ export default function AboutPage() {
           ))}
         </div>
 
-        <div className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/[0.07] rounded-2xl p-6 text-center">
+        <div className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/[0.07] rounded-2xl p-6 text-center space-y-1">
           <p className="text-sm text-neutral-500 dark:text-white/40">tatAI v1.0 — Built with passion.</p>
-          <p className="text-xs text-neutral-400 dark:text-white/20 mt-1">© {new Date().getFullYear()} tatAI. All rights reserved.</p>
+          <p className="text-xs text-neutral-400 dark:text-white/20">tatadev LLC · Kyrgyzstan · INN: 02303202010221</p>
+          <p className="text-xs text-neutral-400 dark:text-white/20">© {new Date().getFullYear()} tatadev LLC. All rights reserved.</p>
         </div>
       </div>
     </div>

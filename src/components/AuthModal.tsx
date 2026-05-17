@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, GoogleAuthProvider, updateProfile,
+  signInWithPopup, GoogleAuthProvider, updateProfile, sendPasswordResetEmail,
 } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -28,8 +29,19 @@ function friendly(code: string) {
   return ERRORS[code] ?? "Something went wrong. Please try again.";
 }
 
+function consumeRedirect(router: ReturnType<typeof useRouter>) {
+  const dest = typeof window !== "undefined"
+    ? sessionStorage.getItem("tatai_login_redirect")
+    : null;
+  if (dest) {
+    sessionStorage.removeItem("tatai_login_redirect");
+    router.push(dest);
+  }
+}
+
 export function AuthModal() {
   const { showLogin, setShowLogin } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,6 +49,22 @@ export function AuthModal() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  async function handleForgotPassword() {
+    if (!email.trim()) { setError("Enter your email first, then click Forgot password"); return; }
+    setResetLoading(true); setError("");
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth) { setError("Auth not configured"); return; }
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+    } catch (e: unknown) {
+      setError(friendly((e as { code?: string }).code ?? ""));
+    } finally { setResetLoading(false); }
+  }
 
   if (!showLogin) return null;
 
@@ -47,6 +75,7 @@ export function AuthModal() {
       if (!auth) { setError("Auth not configured"); return; }
       await signInWithPopup(auth, new GoogleAuthProvider());
       setShowLogin(false);
+      consumeRedirect(router);
     } catch (e: unknown) {
       const code = (e as { code?: string }).code ?? "";
       const msg = friendly(code);
@@ -58,6 +87,7 @@ export function AuthModal() {
     e.preventDefault();
     if (!email.trim() || !password.trim()) { setError("Fill in all fields"); return; }
     if (mode === "signup" && !name.trim()) { setError("Enter your name"); return; }
+    if (mode === "signup" && !agreedToTerms) { setError("Please agree to the Terms of Service and Privacy Policy"); return; }
     setLoading(true); setError("");
     try {
       const auth = getFirebaseAuth();
@@ -69,6 +99,7 @@ export function AuthModal() {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       }
       setShowLogin(false);
+      consumeRedirect(router);
     } catch (e: unknown) {
       setError(friendly((e as { code?: string }).code ?? ""));
     } finally { setLoading(false); }
@@ -162,8 +193,49 @@ export function AuthModal() {
               </button>
             </div>
 
+            {mode === "signin" && (
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
+                  className="text-[12px] text-blue-500 dark:text-blue-400 hover:underline disabled:opacity-50"
+                >
+                  {resetLoading ? "Sending…" : "Forgot password?"}
+                </button>
+              </div>
+            )}
+
+            {resetSent && (
+              <p className="text-green-500 dark:text-green-400 text-[12.5px] text-center bg-green-500/10 rounded-lg px-3 py-2">
+                ✓ Reset link sent! Check your email.
+              </p>
+            )}
+
             {error && (
               <p className="text-red-500 dark:text-red-400 text-[12.5px] text-center">{error}</p>
+            )}
+
+            {/* Terms checkbox — signup only */}
+            {mode === "signup" && (
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div
+                  onClick={() => setAgreedToTerms(v => !v)}
+                  className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    agreedToTerms
+                      ? "bg-blue-600 border-blue-600"
+                      : "border-neutral-300 dark:border-white/20 hover:border-blue-400"
+                  }`}
+                >
+                  {agreedToTerms && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <span className="text-[12.5px] text-neutral-500 dark:text-white/40 leading-5">
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Privacy Policy</a>
+                </span>
+              </label>
             )}
 
             <button
@@ -180,19 +252,22 @@ export function AuthModal() {
           <p className="text-center text-[13px] text-neutral-500 dark:text-white/40">
             {mode === "signin" ? "No account? " : "Already have an account? "}
             <button
-              onClick={() => { setMode(m => m === "signin" ? "signup" : "signin"); setError(""); }}
+              onClick={() => { setMode(m => m === "signin" ? "signup" : "signin"); setError(""); setResetSent(false); setAgreedToTerms(false); }}
               className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
             >
               {mode === "signin" ? "Sign up free" : "Sign in"}
             </button>
           </p>
 
-          <p className="text-center text-[11px] text-neutral-400 dark:text-white/20">
-            By continuing you agree to our{" "}
-            <a href="/terms" className="underline hover:text-neutral-600 dark:hover:text-white/40">Terms</a>
-            {" & "}
-            <a href="/privacy" className="underline hover:text-neutral-600 dark:hover:text-white/40">Privacy</a>
-          </p>
+          {/* Passive notice for sign in */}
+          {mode === "signin" && (
+            <p className="text-center text-[11px] text-neutral-400 dark:text-white/20">
+              By signing in, you agree to our{" "}
+              <a href="/terms" target="_blank" className="underline hover:text-neutral-600 dark:hover:text-white/40">Terms of Service</a>
+              {" "}and{" "}
+              <a href="/privacy" target="_blank" className="underline hover:text-neutral-600 dark:hover:text-white/40">Privacy Policy</a>
+            </p>
+          )}
         </div>
       </div>
     </div>

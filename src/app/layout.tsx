@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
+import { VisitorBeacon } from "@/components/VisitorBeacon";
 import "./globals.css";
 
 const inter = Inter({
@@ -89,9 +90,16 @@ export const metadata: Metadata = {
   category: "technology",
 
   icons: {
-    icon: "/icon",
-    apple: "/apple-icon",
-    shortcut: "/icon",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
   },
 
   manifest: "/manifest.webmanifest",
@@ -126,6 +134,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
             <AuthModal />
+            <VisitorBeacon />
           </AuthProvider>
         </ThemeProvider>
       </body>

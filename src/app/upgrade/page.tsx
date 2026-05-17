@@ -2,9 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Sparkles, Check, Zap, ArrowLeft, Shield, Infinity, Crown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Sparkles, Check, Zap, ArrowLeft, Shield, Infinity, Crown, LogIn } from "lucide-react";
 import { TataILogo } from "@/components/Logo";
+import { useAuth } from "@/context/AuthContext";
 
 // Load PayPal only on client, never during SSR, isolated so crash can't bubble up
 const PayPalBox = dynamic(() => import("@/components/PayPalBox"), {
@@ -33,6 +34,25 @@ const PRO_FEATURES = [
 export default function UpgradePage() {
   const router = useRouter();
   const [success, setSuccess] = useState(false);
+  const { user, loading, setShowLogin } = useAuth();
+
+  // After logging in, the page stays on /upgrade — PayPal buttons become visible automatically
+  function handleUpgradeClick() {
+    if (!user) {
+      // Store intent so user lands back here after login
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("tatai_login_redirect", "/upgrade");
+      }
+      setShowLogin(true);
+    }
+  }
+
+  // On mount, clear any stored redirect if we're already here and logged in
+  useEffect(() => {
+    if (user && typeof window !== "undefined") {
+      sessionStorage.removeItem("tatai_login_redirect");
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0a0a0a] flex flex-col">
@@ -126,8 +146,20 @@ export default function UpgradePage() {
                     ))}
                   </ul>
 
-                  {/* PayPal loaded in isolation — crash here won't affect the rest */}
-                  <PayPalBox onSuccess={() => { setSuccess(true); setTimeout(() => router.push("/"), 2500); }} />
+                  {/* PayPal — shown only when logged in */}
+                  {loading ? (
+                    <div className="w-full h-11 rounded-xl bg-white/[0.08] animate-pulse" />
+                  ) : user ? (
+                    <PayPalBox onSuccess={() => { setSuccess(true); setTimeout(() => router.push("/"), 2500); }} />
+                  ) : (
+                    <button
+                      onClick={handleUpgradeClick}
+                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Sign in to upgrade
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Users, Crown, TrendingUp, MessageSquare, ArrowLeft,
-  Shield, Eye, EyeOff, RefreshCw, LogOut, Zap, DollarSign
+  Users, Crown, TrendingUp, ArrowLeft,
+  Shield, Eye, EyeOff, RefreshCw, LogOut, Zap, DollarSign,
+  Radio, BarChart2, Calendar,
 } from "lucide-react";
 
 interface UserRow {
@@ -25,6 +26,14 @@ interface Stats {
   payments: { uid: string; orderId: string }[];
 }
 
+interface LiveStats {
+  online: number;
+  today: number;
+  pageviews: number;
+  days: { date: string; visitors: number; pageviews: number }[];
+  configured: boolean;
+}
+
 const PROVIDER_LABEL: Record<string, string> = {
   "google.com": "Google",
   "github.com": "GitHub",
@@ -40,6 +49,22 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [stats, setStats] = useState<Stats | null>(null);
   const [search, setSearch] = useState("");
+  const [live, setLive] = useState<LiveStats | null>(null);
+  const liveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function fetchLive() {
+    try {
+      const res = await fetch("/api/analytics/ping");
+      if (res.ok) setLive(await res.json());
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (!stats) return;
+    fetchLive();
+    liveRef.current = setInterval(fetchLive, 15_000); // refresh every 15s
+    return () => { if (liveRef.current) clearInterval(liveRef.current); };
+  }, [stats]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -170,6 +195,85 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+        {/* Live Visitor Stats */}
+        {live && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* Online now */}
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white/40 text-xs font-medium">Online Now</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-green-400 text-[10px] font-medium">LIVE</span>
+                </div>
+              </div>
+              <p className="text-4xl font-bold text-green-400">{live.online}</p>
+              <p className="text-white/25 text-xs mt-1">active in last 90s</p>
+              {!live.configured && (
+                <p className="text-yellow-400/60 text-[10px] mt-2">⚠ Configure Upstash Redis to enable</p>
+              )}
+            </div>
+
+            {/* Today's visitors */}
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white/40 text-xs font-medium">Today&apos;s Visitors</p>
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
+                  <Calendar className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+              <p className="text-4xl font-bold bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent">{live.today}</p>
+              <p className="text-white/25 text-xs mt-1">unique sessions today</p>
+            </div>
+
+            {/* Today's page views */}
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white/40 text-xs font-medium">Page Views Today</p>
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                  <BarChart2 className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+              <p className="text-4xl font-bold bg-gradient-to-r from-violet-400 to-purple-500 bg-clip-text text-transparent">{live.pageviews ?? 0}</p>
+              <p className="text-white/25 text-xs mt-1">total pings today</p>
+            </div>
+          </div>
+        )}
+
+        {/* 7-Day Chart */}
+        {live?.days && live.days.length > 0 && (
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Radio className="w-4 h-4 text-sky-400" />
+              <h2 className="text-sm font-semibold text-white">Last 7 Days</h2>
+              <span className="text-white/25 text-xs ml-auto">auto-refreshes every 15s</span>
+            </div>
+            <div className="flex items-end gap-2 h-24">
+              {live.days.map((d) => {
+                const maxV = Math.max(...live.days.map((x) => x.visitors), 1);
+                const pct = Math.round((d.visitors / maxV) * 100);
+                const label = new Date(d.date + "T00:00:00").toLocaleDateString("en", { weekday: "short" });
+                const isToday = d.date === new Date().toISOString().slice(0, 10);
+                return (
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1" title={`${d.visitors} visitors`}>
+                    <span className="text-white/40 text-[10px]">{d.visitors}</span>
+                    <div className="w-full rounded-t-md transition-all duration-500"
+                      style={{
+                        height: `${Math.max(pct, 4)}%`,
+                        background: isToday
+                          ? "linear-gradient(to top, #38bdf8, #818cf8)"
+                          : "rgba(255,255,255,0.08)",
+                      }}
+                    />
+                    <span className={`text-[10px] font-medium ${isToday ? "text-sky-400" : "text-white/30"}`}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -202,7 +306,7 @@ export default function AdminPage() {
           </div>
           <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-2">
-              <MessageSquare className="w-4 h-4 text-blue-400" />
+              <BarChart2 className="w-4 h-4 text-blue-400" />
               <p className="text-white/40 text-xs font-medium">Payments Recorded</p>
             </div>
             <p className="text-3xl font-bold text-white">{stats.payments.length}</p>

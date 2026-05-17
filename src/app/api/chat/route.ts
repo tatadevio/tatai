@@ -47,7 +47,7 @@ const ALLOWED_MODELS: Record<string, string> = {
 };
 
 export async function POST(req: Request) {
-  const { messages, model: requestedModel }: { messages: UIMessage[]; model?: string } = await req.json();
+  const { messages, model: requestedModel, language, textStream }: { messages: UIMessage[]; model?: string; language?: string; textStream?: boolean } = await req.json();
   const resolvedModel = ALLOWED_MODELS[requestedModel ?? ""] ?? "gpt-4o";
 
   // Verify Firebase ID token if Supabase is configured (full auth enforcement mode)
@@ -107,11 +107,9 @@ IDENTITY RULES — never break these:
 
 ABOUT tatadev LLC:
 - tatadev LLC is headquartered in Kyrgyzstan and operates globally, serving users all around the world.
-- tatadev LLC was founded and is owned by Sharif and Mariia.
 - If asked where tatadev is located: "tatadev LLC is based in Kyrgyzstan and works with clients and users worldwide."
 - If asked about tatadev's reach: "tatadev LLC operates globally — no matter where you are, we're here to help."
-- If asked who owns or founded tatadev: "tatadev LLC was founded by Sharif and Mariia."
-- If asked who made tatAI: "tatAI was created by tatadev LLC, founded by Sharif and Mariia."
+- If asked who made tatAI: "tatAI was created by tatadev LLC."
 
 CLARIFYING QUESTIONS RULE:
 - Before generating any complex output (websites, apps, landing pages, full code projects, dashboards, games, or any multi-part deliverable), ALWAYS ask 2-4 short clarifying questions first.
@@ -131,13 +129,26 @@ FORMATTING:
 
 WEB BROWSING:
 - When the user shares a URL, you have already fetched its content (provided below). Use it to answer questions about the page.
-- Always summarize and analyze the fetched content directly. Never say you "can't access" a URL if content is provided.${urlContext ? `\n\nFETCHED WEB CONTENT:${urlContext}` : ""}`,
+- Always summarize and analyze the fetched content directly. Never say you "can't access" a URL if content is provided.${language && language !== "auto" ? `\n\nLANGUAGE: The user has selected "${language}" as their preferred language. Always respond in this language unless the user explicitly writes in a different language.` : ""}${urlContext ? `\n\nFETCHED WEB CONTENT:${urlContext}` : ""}`,
     messages: await convertToModelMessages(messages),
   });
 
-  // Strip headers that reveal underlying technology
+  // Mobile requests plain text stream (easier to parse in React Native)
+  if (textStream) {
+    const raw = result.toTextStreamResponse();
+    return new Response(raw.body, {
+      status: raw.status,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
+
+  // Web — strip headers that reveal underlying technology
   const raw = result.toUIMessageStreamResponse();
-  const clean = new Response(raw.body, {
+  return new Response(raw.body, {
     status: raw.status,
     headers: {
       "Content-Type": raw.headers.get("Content-Type") ?? "text/event-stream",
@@ -145,5 +156,4 @@ WEB BROWSING:
       "X-Content-Type-Options": "nosniff",
     },
   });
-  return clean;
 }

@@ -1,11 +1,17 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const alt = "tatAI — Your Intelligent AI Assistant";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OGImage() {
+export default async function OGImage() {
+  const iconPath = path.join(process.cwd(), "public", "icon-512.png");
+  const icon = await readFile(iconPath);
+  const iconBase64 = `data:image/png;base64,${icon.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -53,17 +59,10 @@ export default function OGImage() {
 
         {/* Logo + Name */}
         <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 28 }}>
-          <div style={{
-            width: 100, height: 100, borderRadius: 28,
-            background: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 60px rgba(37,99,235,0.35), 0 20px 40px rgba(0,0,0,0.4)",
-          }}>
-            <svg width="60" height="60" viewBox="0 0 32 32" fill="none">
-              <path d="M8 10h16M16 10v12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="22" cy="21" r="2.5" fill="white" />
-            </svg>
-          </div>
+          <img src={iconBase64} width={100} height={100} style={{
+            borderRadius: 24,
+            boxShadow: "0 0 60px rgba(124,58,237,0.4), 0 20px 40px rgba(0,0,0,0.4)",
+          }} />
           <span style={{
             fontSize: 96, fontWeight: 800, color: "white",
             letterSpacing: "-3px", lineHeight: 1, display: "flex",

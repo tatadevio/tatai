@@ -17,6 +17,7 @@ import remarkGfm from "remark-gfm";
 import { TataILogo } from "@/components/Logo";
 import { CodeBlock } from "@/components/CodeBlock";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const TATAI_MODELS = [
   {
@@ -66,11 +67,11 @@ const SUGGESTIONS = [
   { icon: Zap, label: "Brainstorm", desc: "Ideas & strategy", prompt: "Give me 10 startup ideas in the AI space for 2026." },
 ];
 
-const BOTTOM_LINKS = [
-  { icon: Settings, label: "Settings", href: "/settings" },
-  { icon: Info, label: "About tatAI", href: "/about" },
-  { icon: Shield, label: "Privacy Policy", href: "/privacy" },
-  { icon: FileTerminal, label: "Terms of Service", href: "/terms" },
+const BOTTOM_LINK_DEFS = [
+  { icon: Settings, key: "settings" as const, href: "/settings" },
+  { icon: Info, key: "about" as const, href: "/about" },
+  { icon: Shield, key: "privacy" as const, href: "/privacy" },
+  { icon: FileTerminal, key: "terms" as const, href: "/terms" },
 ];
 
 interface Session { id: string; title: string; }
@@ -108,7 +109,7 @@ function MessageActions({ text, onRegenerate, isLast }: { text: string; onRegene
   }
 
   function share() {
-    const url = "https://www.tatai.cloud";
+    const url = window.location.href;
     if (navigator.share) {
       navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
     } else {
@@ -184,6 +185,7 @@ function MessageContent({ content }: { content: string }) {
 export default function Home() {
   const router = useRouter();
   const { user, logout, setShowLogin } = useAuth();
+  const t = useTranslation();
   const [isPro, setIsPro] = useState(false);
 
   // Check Pro status from Supabase when user logs in
@@ -274,10 +276,23 @@ export default function Home() {
     return "User";
   }
 
+  const [chatLanguage, setChatLanguage] = useState("auto");
+  useEffect(() => {
+    const sync = () => setChatLanguage(localStorage.getItem("tatai_language") ?? "auto");
+    sync();
+    const onStorage = (e: StorageEvent) => { if (e.key === "tatai_language") sync(); };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("tatai_lang_change", sync);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("tatai_lang_change", sync);
+    };
+  }, []);
+
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: { model: activeModelDef.apiModel },
+      body: { model: activeModelDef.apiModel, language: chatLanguage },
     }),
   });
 
@@ -651,14 +666,14 @@ export default function Home() {
 
           {/* These links are ALWAYS visible, logged in or not */}
           <div className="px-2">
-            {BOTTOM_LINKS.map(({ icon: Icon, label, href }) => (
+            {BOTTOM_LINK_DEFS.map(({ icon: Icon, key, href }) => (
               <button
-                key={label}
+                key={key}
                 onClick={() => { router.push(href); closeSidebarOnMobile(); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-800 dark:hover:text-white/70 transition-colors text-left"
               >
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                {label}
+                {t[key]}
               </button>
             ))}
             <button
@@ -666,7 +681,7 @@ export default function Home() {
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors text-left font-medium"
             >
               <Crown className="w-3.5 h-3.5 flex-shrink-0" />
-              Upgrade to Pro
+              {t.upgrade}
             </button>
           </div>
 
@@ -684,7 +699,7 @@ export default function Home() {
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors text-left"
                   >
                     <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
-                    Sign out
+                    {t.signOut}
                   </button>
                 </div>
               )}
@@ -715,7 +730,7 @@ export default function Home() {
                 <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-white/[0.08] flex items-center justify-center flex-shrink-0">
                   <LogIn className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                 </div>
-                <span className="text-[13px] font-medium text-neutral-700 dark:text-white/60">Log in</span>
+                <span className="text-[13px] font-medium text-neutral-700 dark:text-white/60">{t.signIn}</span>
               </button>
             </div>
           )}
@@ -1017,7 +1032,7 @@ export default function Home() {
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
-                placeholder={attachments.length > 0 ? "Add a message or just send the file..." : "Message tatAI"}
+                placeholder={attachments.length > 0 ? "Add a message or just send the file..." : t.messagePlaceholder}
                 rows={1}
                 className="w-full resize-none bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-[14.5px] leading-relaxed tracking-[-0.01em] px-4 pt-3.5 pb-12 focus:outline-none min-h-[56px] max-h-[200px]"
               />
@@ -1082,7 +1097,7 @@ export default function Home() {
               </div>
             </div>
             <p className="text-center text-neutral-400 dark:text-neutral-500/60 text-[11px] mt-2 tracking-wide">
-              tatAI can make mistakes · always verify important info
+              {t.disclaimer}
             </p>
           </div>
         </div>
