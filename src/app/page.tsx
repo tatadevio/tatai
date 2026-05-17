@@ -700,6 +700,7 @@ export default function Home() {
 
         {/* Top bar */}
         <header className="flex items-center gap-2 px-3 py-2.5 border-b border-neutral-100 dark:border-white/[0.04]">
+          {/* Left: sidebar toggle */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40 flex-shrink-0"
@@ -707,32 +708,90 @@ export default function Home() {
             <PanelLeft className="w-4 h-4" />
           </button>
 
-          {/* Mobile: center logo — only show when there are messages (welcome screen has its own logo) */}
-          {isMobile ? (
-            messages.length > 0 && (
-              <div className="flex-1 flex items-center justify-center gap-2">
-                <TataILogo className="w-6 h-6" />
+          {/* Center: model selector (ChatGPT style) */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="relative">
+              <button
+                onClick={() => setModelDropOpen(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors group"
+              >
                 <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tatAI</span>
-              </div>
-            )
-          ) : (
-            !sidebarOpen && (
-              <div className="flex items-center gap-2 ml-1">
-                <TataILogo className="w-6 h-6" />
-                <span className="font-semibold text-neutral-900 dark:text-white text-[15px]">tatAI</span>
-              </div>
-            )
-          )}
+                <span className={`text-[13px] font-medium ${activeModelDef.color}`}>{activeModelDef.fullName}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-400 dark:text-white/30 group-hover:text-neutral-600 dark:group-hover:text-white/60 transition-colors" />
+              </button>
 
-          {/* Mobile: new chat button on right */}
-          {isMobile && (
-            <button
-              onClick={() => { newChat(); closeSidebarOnMobile(); }}
-              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40 flex-shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          )}
+              {modelDropOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setModelDropOpen(false)} />
+                  <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-40 w-[230px] bg-white dark:bg-[#1c1c1c] border border-neutral-200 dark:border-white/[0.08] rounded-2xl shadow-xl overflow-hidden">
+                    <div className="px-3 py-2.5 border-b border-neutral-100 dark:border-white/[0.05]">
+                      <p className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Choose model</p>
+                    </div>
+                    {TATAI_MODELS.map((m) => {
+                      const Icon = m.icon;
+                      const isActive = m.id === selectedModel;
+                      const locked = m.proOnly && !isPro;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            if (locked) { setModelDropOpen(false); router.push("/upgrade"); return; }
+                            setSelectedModel(m.id); setModelDropOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left ${
+                            locked
+                              ? "opacity-60 cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-400/5"
+                              : `hover:bg-neutral-50 dark:hover:bg-white/[0.05] ${isActive ? "bg-neutral-50 dark:bg-white/[0.04]" : ""}`
+                          }`}
+                        >
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${m.bg}`}>
+                            <Icon className={`w-3.5 h-3.5 ${m.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{m.fullName}</p>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                m.badge === "Fast" ? "bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400" :
+                                m.badge === "Default" ? "bg-blue-100 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400" :
+                                "bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400"
+                              }`}>{m.badge}</span>
+                            </div>
+                            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{m.desc}</p>
+                          </div>
+                          {locked ? (
+                            <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                          ) : isActive ? (
+                            <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Upgrade button (non-pro) + new chat (mobile) */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {!isPro && (
+              <button
+                onClick={() => router.push("/upgrade")}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[12px] font-semibold hover:opacity-90 transition-opacity shadow-sm shadow-violet-500/20"
+              >
+                <Crown className="w-3 h-3" />
+                Upgrade
+              </button>
+            )}
+            {isMobile && (
+              <button
+                onClick={() => { newChat(); closeSidebarOnMobile(); }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/40"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Messages / Welcome */}
@@ -949,67 +1008,6 @@ export default function Home() {
                     <ImageIcon className="w-4 h-4" />
                   </button>
 
-                  {/* Model selector */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setModelDropOpen(v => !v)}
-                      className="flex items-center gap-1.5 pl-2 sm:pl-2.5 pr-1.5 sm:pr-2 py-1.5 rounded-lg text-[12px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-neutral-700 dark:hover:text-white transition-colors active:scale-95"
-                    >
-                      <activeModelDef.icon className={`w-3.5 h-3.5 flex-shrink-0 ${activeModelDef.color}`} />
-                      <span>{activeModelDef.fullName}</span>
-                      <ChevronDown className="w-3 h-3 opacity-50" />
-                    </button>
-
-                    {modelDropOpen && (
-                      <>
-                        <div className="fixed inset-0 z-30" onClick={() => setModelDropOpen(false)} />
-                        <div className="absolute bottom-full mb-2 left-0 z-40 w-[220px] bg-white dark:bg-[#1e1e1e] border border-neutral-200 dark:border-white/[0.08] rounded-2xl shadow-xl overflow-hidden">
-                          <div className="px-3 py-2 border-b border-neutral-100 dark:border-white/[0.05]">
-                            <p className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Choose model</p>
-                          </div>
-                          {TATAI_MODELS.map((m) => {
-                            const Icon = m.icon;
-                            const isActive = m.id === selectedModel;
-                            const locked = m.proOnly && !isPro;
-                            return (
-                              <button
-                                key={m.id}
-                                onClick={() => {
-                                  if (locked) { setModelDropOpen(false); router.push("/upgrade"); return; }
-                                  setSelectedModel(m.id); setModelDropOpen(false);
-                                }}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left ${
-                                  locked
-                                    ? "opacity-60 cursor-pointer hover:bg-amber-50/50 dark:hover:bg-amber-400/5"
-                                    : `hover:bg-neutral-50 dark:hover:bg-white/[0.05] ${isActive ? "bg-neutral-50 dark:bg-white/[0.04]" : ""}`
-                                }`}
-                              >
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${m.bg}`}>
-                                  <Icon className={`w-3.5 h-3.5 ${m.color}`} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/80">{m.fullName}</p>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                                      m.badge === "Fast" ? "bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400" :
-                                      m.badge === "Default" ? "bg-blue-100 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400" :
-                                      "bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400"
-                                    }`}>{m.badge}</span>
-                                  </div>
-                                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{m.desc}</p>
-                                </div>
-                                {locked ? (
-                                  <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                                ) : isActive ? (
-                                  <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                ) : null}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </div>
 
                 {/* Right actions */}
@@ -1044,44 +1042,60 @@ export default function Home() {
 
         {/* ── Voice Mode Overlay ── */}
         {voiceActive && (
-          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center">
-            {/* Animated orb */}
-            <div className="relative mb-10">
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${
-                voiceSpeaking
-                  ? "bg-gradient-to-br from-blue-500 to-violet-600 shadow-2xl shadow-blue-500/50 scale-110"
-                  : voiceListening
-                  ? "bg-gradient-to-br from-red-500 to-pink-600 shadow-2xl shadow-red-500/50 scale-105"
-                  : "bg-white/[0.08] border border-white/10"
-              }`}>
-                {voiceSpeaking ? (
-                  <Volume2 className="w-12 h-12 text-white" />
-                ) : voiceListening ? (
-                  <Mic className="w-12 h-12 text-white animate-pulse" />
-                ) : (
-                  <TataILogo className="w-14 h-14" />
-                )}
+          <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0a0a0a" }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-2">
+              <div className="flex items-center gap-2">
+                <TataILogo className="w-6 h-6" />
+                <span className="text-white/70 text-sm font-semibold">tatAI</span>
               </div>
-              {/* Pulse rings */}
-              {(voiceListening || voiceSpeaking) && (
-                <>
-                  <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${voiceSpeaking ? "bg-blue-500" : "bg-red-500"}`} />
-                  <div className={`absolute -inset-4 rounded-full animate-ping opacity-10 delay-150 ${voiceSpeaking ? "bg-blue-500" : "bg-red-500"}`} />
-                </>
-              )}
+              <button
+                onClick={stopVoiceMode}
+                className="w-8 h-8 rounded-full bg-white/[0.08] hover:bg-white/[0.14] flex items-center justify-center transition-colors"
+              >
+                <XIcon className="w-4 h-4 text-white/60" />
+              </button>
             </div>
 
-            {/* Status text */}
-            <p className="text-white text-xl font-semibold mb-2">
-              {voiceSpeaking ? "tatAI is speaking…" : voiceListening ? "Listening…" : "Tap mic to speak"}
-            </p>
-            {voiceTranscript && (
-              <p className="text-white/50 text-sm max-w-xs text-center mb-4">{voiceTranscript}</p>
-            )}
+            {/* Main area */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6">
+              {/* Waveform */}
+              <div className="flex items-center justify-center gap-[5px] h-20">
+                {[40, 60, 80, 56, 72, 64, 48].map((maxH, i) => (
+                  <div
+                    key={i}
+                    className={`voice-bar ${!(voiceListening || voiceSpeaking) ? "voice-bar-idle" : ""}`}
+                    style={{
+                      height: `${maxH}px`,
+                      background: voiceSpeaking
+                        ? `linear-gradient(180deg, #818cf8, #6366f1)`
+                        : voiceListening
+                        ? `linear-gradient(180deg, #f472b6, #ec4899)`
+                        : "rgba(255,255,255,0.12)",
+                      animationDuration: voiceSpeaking ? `${0.7 + i * 0.08}s` : `${1.0 + i * 0.07}s`,
+                    }}
+                  />
+                ))}
+              </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-4 mt-6">
-              {/* Manual mic button */}
+              {/* Status */}
+              <div className="text-center">
+                <p className="text-white text-[22px] font-semibold tracking-tight mb-1">
+                  {voiceSpeaking ? "tatAI is speaking" : voiceListening ? "Listening…" : "Tap mic to speak"}
+                </p>
+                {voiceTranscript ? (
+                  <p className="text-white/40 text-[14px] max-w-[280px] mx-auto leading-relaxed">{voiceTranscript}</p>
+                ) : (
+                  <p className="text-white/25 text-[13px]">
+                    {voiceSpeaking ? "Processing your response…" : "Say something to tatAI"}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom controls */}
+            <div className="flex items-center justify-center gap-5 pb-16 pt-4">
+              {/* Mute / unmute */}
               <button
                 onClick={() => {
                   if (voiceListening) {
@@ -1091,25 +1105,25 @@ export default function Home() {
                     if (SR) startListening(SR);
                   }
                 }}
-                className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                className={`w-[60px] h-[60px] rounded-full flex items-center justify-center transition-all active:scale-95 ${
                   voiceListening
-                    ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/40"
-                    : "bg-white/10 hover:bg-white/20 border border-white/20"
+                    ? "bg-white text-neutral-900 shadow-lg shadow-white/20"
+                    : "bg-white/[0.1] border border-white/[0.15] text-white/60 hover:bg-white/[0.16]"
                 }`}
               >
-                {voiceListening ? <MicOff className="w-7 h-7 text-white" /> : <Mic className="w-7 h-7 text-white" />}
+                {voiceListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
 
               {/* End call */}
               <button
                 onClick={stopVoiceMode}
-                className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-lg shadow-red-600/40"
+                className="w-[60px] h-[60px] rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg shadow-red-500/30 active:scale-95"
               >
-                <XIcon className="w-6 h-6 text-white" />
+                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+                </svg>
               </button>
             </div>
-
-            <p className="text-white/20 text-xs mt-8">Powered by tatAI · tatadev LLC</p>
           </div>
         )}
       </main>
