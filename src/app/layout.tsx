@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const APP_URL = "https://www.tatai.cloud";
@@ -118,7 +119,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         {/* Preconnect for speed */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
