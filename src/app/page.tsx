@@ -274,7 +274,7 @@ export default function Home() {
     return "User";
   }
 
-  const { messages, sendMessage, status, setMessages, reload } = useChat({
+  const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: { model: activeModelDef.apiModel },
@@ -539,6 +539,15 @@ export default function Home() {
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  }
+
+  function regenerateLast() {
+    const lastUser = [...messages].reverse().find(m => m.role === "user");
+    if (!lastUser) return;
+    const text = lastUser.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("");
+    // Remove last assistant message then resend
+    setMessages(messages.filter(m => m.id !== messages[messages.length - 1]?.id));
+    setTimeout(() => sendMessage({ text }), 50);
   }
 
   function newChat() {
@@ -938,7 +947,7 @@ export default function Home() {
                         <MessageActions
                           text={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")}
                           isLast={m.id === messages[messages.length - 1]?.id}
-                          onRegenerate={() => reload?.()}
+                          onRegenerate={regenerateLast}
                         />
                       </div>
                     )}
