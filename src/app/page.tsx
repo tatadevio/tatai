@@ -10,6 +10,7 @@ import {
   PanelLeft, Copy, Check, User, ChevronUp, LogIn, LogOut,
   Paperclip, Image as ImageIcon, X as XIcon, File, ChevronDown,
   Zap as ZapIcon, Brain, Sparkles, Mic, MicOff, Volume2,
+  ThumbsUp, ThumbsDown, RefreshCw, Share2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -95,15 +96,50 @@ function fileTypeInfo(mime = "", fileName = "") {
   return { label: ext.toUpperCase() || "File", color: "text-neutral-600 dark:text-neutral-400", bg: "bg-neutral-100 dark:bg-white/[0.08]", icon: "📎" };
 }
 
-function CopyButton({ text }: { text: string }) {
+function MessageActions({ text, onRegenerate, isLast }: { text: string; onRegenerate?: () => void; isLast?: boolean }) {
   const [copied, setCopied] = useState(false);
+  const [liked, setLiked] = useState<"up" | "down" | null>(null);
+  const [shared, setShared] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function share() {
+    const shareText = text.slice(0, 280) + (text.length > 280 ? "…" : "");
+    if (navigator.share) {
+      navigator.share({ title: "tatAI", text: shareText, url: window.location.href }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(`${shareText}\n\n— tatai.cloud`);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
+  }
+
+  const btn = "p-1.5 rounded-lg text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-all active:scale-95";
+
   return (
-    <button
-      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-white transition-colors"
-    >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-    </button>
+    <div className="mt-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button onClick={copy} title="Copy" className={btn}>
+        {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+      <button onClick={() => setLiked(v => v === "up" ? null : "up")} title="Good response" className={`${btn} ${liked === "up" ? "text-green-500 dark:text-green-400" : ""}`}>
+        <ThumbsUp className="w-3.5 h-3.5" />
+      </button>
+      <button onClick={() => setLiked(v => v === "down" ? null : "down")} title="Bad response" className={`${btn} ${liked === "down" ? "text-red-500 dark:text-red-400" : ""}`}>
+        <ThumbsDown className="w-3.5 h-3.5" />
+      </button>
+      {isLast && onRegenerate && (
+        <button onClick={onRegenerate} title="Regenerate" className={btn}>
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      )}
+      <button onClick={share} title="Share" className={btn}>
+        {shared ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Share2 className="w-3.5 h-3.5" />}
+      </button>
+    </div>
   );
 }
 
@@ -238,7 +274,7 @@ export default function Home() {
     return "User";
   }
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, reload } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: { model: activeModelDef.apiModel },
@@ -897,11 +933,13 @@ export default function Home() {
                         })()}
                       </div>
                     ) : (
-                      <div className="text-neutral-800 dark:text-neutral-100 text-[14.5px] leading-[1.7] tracking-[-0.01em]">
+                      <div className="text-neutral-800 dark:text-neutral-100 text-[14.5px] leading-[1.7] tracking-[-0.01em] group">
                         <MessageContent content={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")} />
-                        <div className="mt-1.5 flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity">
-                          <CopyButton text={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")} />
-                        </div>
+                        <MessageActions
+                          text={m.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("")}
+                          isLast={m.id === messages[messages.length - 1]?.id}
+                          onRegenerate={() => reload?.()}
+                        />
                       </div>
                     )}
                   </div>
