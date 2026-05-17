@@ -2,6 +2,7 @@
 
 import { Component, ReactNode } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { useAuth } from "@/context/AuthContext";
 
 // Error boundary to catch any PayPal SDK crash
 class PayPalErrorBoundary extends Component<
@@ -22,22 +23,25 @@ interface Props {
 
 export default function PayPalBox({ onSuccess }: Props) {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
+  const { user } = useAuth();
 
   async function createOrder() {
-    try {
-      const res = await fetch("/api/paypal/create-order", { method: "POST" });
-      const data = await res.json();
-      return data.id as string;
-    } catch {
-      throw new Error("Could not create order");
-    }
+    const res = await fetch("/api/paypal/create-order", { method: "POST" });
+    const data = await res.json();
+    if (!data.id) throw new Error("Could not create order");
+    return data.id as string;
   }
 
   async function onApprove(data: { orderID: string }) {
     try {
+      let authHeader = "";
+      if (user) {
+        const token = await user.getIdToken();
+        authHeader = `Bearer ${token}`;
+      }
       const res = await fetch("/api/paypal/capture-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
         body: JSON.stringify({ orderID: data.orderID }),
       });
       const result = await res.json();
@@ -58,14 +62,16 @@ export default function PayPalBox({ onSuccess }: Props) {
 
   return (
     <PayPalErrorBoundary fallback={fallback}>
-      <PayPalScriptProvider options={{ clientId, currency: "USD", intent: "capture" }}>
-        <PayPalButtons
-          style={{ layout: "vertical", color: "gold", shape: "pill", label: "pay", height: 44 }}
-          createOrder={createOrder}
-          onApprove={onApprove}
-          onError={() => {}}
-        />
-      </PayPalScriptProvider>
+      <div className="paypal-wrapper">
+        <PayPalScriptProvider options={{ clientId, currency: "USD", intent: "capture" }}>
+          <PayPalButtons
+            style={{ layout: "vertical", color: "gold", shape: "pill", label: "pay", height: 44 }}
+            createOrder={createOrder}
+            onApprove={onApprove}
+            onError={() => {}}
+          />
+        </PayPalScriptProvider>
+      </div>
     </PayPalErrorBoundary>
   );
 }

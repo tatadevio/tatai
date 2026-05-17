@@ -17,10 +17,7 @@ async function getAccessToken() {
   return data.access_token as string;
 }
 
-export async function POST(req: Request) {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return new Response("Unauthorized", { status: 401 });
-
+export async function POST() {
   const token = await getAccessToken();
   const res = await fetch(`${PAYPAL_BASE}/v2/checkout/orders`, {
     method: "POST",
