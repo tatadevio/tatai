@@ -96,11 +96,39 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load sessions from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("tatai_sessions");
+      if (saved) setSessions(JSON.parse(saved));
+    } catch {}
+  }, []);
+
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
   const isLoading = status === "streaming" || status === "submitted";
+
+  // Persist sessions list
+  useEffect(() => {
+    if (sessions.length > 0) {
+      try { localStorage.setItem("tatai_sessions", JSON.stringify(sessions)); } catch {}
+    }
+  }, [sessions]);
+
+  // Persist messages for active session
+  useEffect(() => {
+    if (activeSession && messages.length > 0 && !isLoading) {
+      try {
+        const serializable = messages.map(m => ({
+          ...m,
+          parts: m.parts.filter(p => p.type === "text"),
+        }));
+        localStorage.setItem(`tatai_msgs_${activeSession}`, JSON.stringify(serializable));
+      } catch {}
+    }
+  }, [messages, activeSession, isLoading]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -137,10 +165,13 @@ export default function Home() {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
     const text = input.trim();
     const titleText = text || (attachments[0]?.name ?? "File upload");
-    if (messages.length === 0) {
-      const id = Date.now().toString();
-      setSessions((p) => [{ id, title: titleText.slice(0, 40) }, ...p]);
-      setActiveSession(id);
+
+    let sessionId = activeSession;
+    if (messages.length === 0 || !sessionId) {
+      sessionId = Date.now().toString();
+      const newSession = { id: sessionId, title: titleText.slice(0, 40) };
+      setSessions((p) => [newSession, ...p]);
+      setActiveSession(sessionId);
     }
 
     if (attachments.length > 0) {
@@ -165,7 +196,32 @@ export default function Home() {
     setMessages([]);
     setInput("");
     setActiveSession(null);
+    setAttachments([]);
+    setAttachPreviews([]);
     if (textareaRef.current) textareaRef.current.focus();
+  }
+
+  function loadSession(id: string) {
+    try {
+      const saved = localStorage.getItem(`tatai_msgs_${id}`);
+      if (saved) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setMessages(JSON.parse(saved) as any);
+      }
+      setActiveSession(id);
+    } catch {}
+  }
+
+  function deleteSession(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSessions(p => p.filter(s => s.id !== id));
+    try { localStorage.removeItem(`tatai_msgs_${id}`); } catch {}
+    if (activeSession === id) newChat();
+    // Update persisted list
+    try {
+      const updated = sessions.filter(s => s.id !== id);
+      localStorage.setItem("tatai_sessions", JSON.stringify(updated));
+    } catch {}
   }
 
   return (
@@ -190,17 +246,25 @@ export default function Home() {
             <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-2 pb-1">Today</p>
           )}
           {sessions.map((s) => (
-            <button
+            <div
               key={s.id}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] truncate transition-colors text-left ${
+              onClick={() => loadSession(s.id)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors text-left cursor-pointer group ${
                 activeSession === s.id
                   ? "bg-neutral-200 dark:bg-white/[0.08] text-neutral-900 dark:text-white"
                   : "text-neutral-600 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white/80"
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
-              {s.title}
-            </button>
+              <span className="flex-1 truncate">{s.title}</span>
+              <button
+                onClick={(e) => deleteSession(s.id, e)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-neutral-300 dark:hover:bg-white/10 transition-all flex-shrink-0"
+                title="Delete"
+              >
+                <XIcon className="w-3 h-3" />
+              </button>
+            </div>
           ))}
         </div>
 
@@ -275,7 +339,7 @@ export default function Home() {
                 {SUGGESTIONS.map(({ icon: Icon, label, desc, prompt }) => (
                   <button
                     key={label}
-                    onClick={() => { setSessions((p) => [{ id: Date.now().toString(), title: prompt.slice(0, 40) }, ...p]); sendMessage({ text: prompt }); }}
+                    onClick={() => { const id = Date.now().toString(); setSessions((p) => [{ id, title: prompt.slice(0, 40) }, ...p]); setActiveSession(id); sendMessage({ text: prompt }); }}
                     className="flex items-start gap-3 p-4 rounded-2xl border border-neutral-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.06] hover:border-neutral-300 dark:hover:border-white/[0.14] transition-all text-left group"
                   >
                     <Icon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 mt-0.5 flex-shrink-0 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
