@@ -130,14 +130,20 @@ export function AuthModal() {
       "auth/email-already-in-use": "Email already registered. Sign in instead.",
       "auth/invalid-email": "Invalid email address.",
       "auth/weak-password": "Password must be at least 6 characters.",
-      "auth/invalid-phone-number": "Invalid phone number.",
+      "auth/invalid-phone-number": "Invalid phone number. Include country code.",
       "auth/invalid-verification-code": "Wrong OTP code. Try again.",
-      "auth/too-many-requests": "Too many attempts. Wait a moment.",
+      "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
       "auth/popup-closed-by-user": "Login cancelled.",
-      "auth/account-exists-with-different-credential": "Account exists with different sign-in method.",
+      "auth/account-exists-with-different-credential": "Account exists with a different sign-in method.",
       "auth/cancelled-popup-request": "Only one login window allowed at a time.",
+      "auth/unauthorized-domain": "This domain is not authorized. Contact support.",
+      "auth/captcha-check-failed": "reCAPTCHA failed. Please refresh and try again.",
+      "auth/quota-exceeded": "SMS quota exceeded. Try again later.",
+      "auth/missing-phone-number": "Please enter a phone number.",
+      "auth/network-request-failed": "Network error. Check your connection.",
+      "auth/internal-error": "Server error. Please try again.",
     };
-    return map[code] ?? "Something went wrong. Please try again.";
+    return map[code] ?? `Something went wrong (${code}).`;
   }
 
   async function handleEmailAuth(e: React.FormEvent) {
@@ -185,13 +191,25 @@ export function AuthModal() {
     const fullPhone = `${selectedCountry.code}${phoneNum.replace(/^0+/, "")}`;
     try {
       const firebaseAuth = getFirebaseAuth();
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, recaptchaRef.current!, { size: "invisible" });
+      // Always create a fresh verifier to avoid stale state
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch {}
+        window.recaptchaVerifier = undefined;
       }
+      window.recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, recaptchaRef.current!, {
+        size: "invisible",
+        callback: () => {},
+        "expired-callback": () => { window.recaptchaVerifier = undefined; },
+      });
       const result = await signInWithPhoneNumber(firebaseAuth, fullPhone, window.recaptchaVerifier);
       setConfirmResult(result);
       setOtpSent(true);
     } catch (err: unknown) {
+      // Reset verifier so next attempt starts fresh
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch {}
+        window.recaptchaVerifier = undefined;
+      }
       setError(friendlyError((err as { code: string }).code));
     } finally { setLoading(false); }
   }
@@ -363,7 +381,7 @@ export function AuthModal() {
                       {countryDropOpen && (
                         <>
                           <div className="fixed inset-0 z-50" onClick={() => setCountryDropOpen(false)} />
-                          <div className="absolute top-full mt-1 left-0 z-50 w-[260px] bg-white dark:bg-[#1e1e1e] border border-neutral-200 dark:border-white/[0.1] rounded-2xl shadow-xl overflow-hidden">
+                          <div className="absolute bottom-full mb-1 left-0 z-50 w-[260px] bg-white dark:bg-[#1e1e1e] border border-neutral-200 dark:border-white/[0.1] rounded-2xl shadow-xl overflow-hidden">
                             {/* Search */}
                             <div className="p-2 border-b border-neutral-100 dark:border-white/[0.06]">
                               <div className="flex items-center gap-2 px-2.5 py-1.5 bg-neutral-50 dark:bg-white/[0.05] rounded-lg">
