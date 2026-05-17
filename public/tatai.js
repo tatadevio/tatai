@@ -196,6 +196,7 @@ function showWelcome() {
      ╚═╝   ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝
 
 ${brand} ${c.gray}v${VERSION}${c.reset}  ·  ${c.dim}Intelligence Unleashed${c.reset}
+  ${c.dim}by tatadev LLC${c.reset}
 
   ${c.gray}Model:${c.reset} ${c.purple}${model.label}${c.reset} ${c.gray}(${model.desc})${c.reset}
   ${c.gray}Dir:${c.reset}   ${c.dim}${cwd}${c.reset}
