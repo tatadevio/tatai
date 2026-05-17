@@ -9,8 +9,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "tataAI — Your AI Assistant",
-  description: "tataAI: a powerful AI assistant for everyone.",
+  title: "tataI — Your AI Assistant",
+  description: "tataI: a powerful AI assistant for everyone.",
 };
 
 export default function RootLayout({

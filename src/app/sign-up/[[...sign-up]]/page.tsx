@@ -10,7 +10,7 @@ export default function SignUpPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span className="text-2xl font-bold text-white tracking-tight">tataAI</span>
+          <span className="text-2xl font-bold text-white tracking-tight">tataI</span>
         </div>
         <SignUp
           appearance={{

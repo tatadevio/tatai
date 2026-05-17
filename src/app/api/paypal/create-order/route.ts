@@ -29,7 +29,7 @@ export async function POST() {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       intent: "CAPTURE",
-      purchase_units: [{ amount: { currency_code: "USD", value: "9.99" }, description: "tataAI Pro — Monthly" }],
+      purchase_units: [{ amount: { currency_code: "USD", value: "9.99" }, description: "tataI Pro — Monthly" }],
     }),
   });
 

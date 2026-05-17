@@ -5,10 +5,21 @@ export const dynamic = "force-dynamic";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Check, Zap } from "lucide-react";
+import { Sparkles, Check, Zap, ArrowLeft, Shield, Infinity } from "lucide-react";
 
-const FREE_FEATURES = ["10 messages per day", "Access to tataAI", "Basic chat"];
-const PRO_FEATURES = ["Unlimited messages", "Faster responses", "Priority support", "All future features", "Cancel anytime"];
+const FREE_FEATURES = [
+  "10 messages per day",
+  "Access to tataI",
+  "Basic chat",
+];
+
+const PRO_FEATURES = [
+  { text: "Unlimited messages", icon: Infinity },
+  { text: "Faster AI responses", icon: Zap },
+  { text: "Priority support", icon: Shield },
+  { text: "All future features", icon: Sparkles },
+  { text: "Cancel anytime", icon: Check },
+];
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -30,93 +41,154 @@ export default function UpgradePage() {
     const result = await res.json();
     if (result.success) {
       setSuccess(true);
-      setTimeout(() => router.push("/"), 2000);
+      setTimeout(() => router.push("/"), 2500);
     } else {
       setError("Payment failed. Please try again.");
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center p-6">
-      <div className="w-full max-w-3xl">
-        <div className="text-center mb-10">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-500/20">
-            <Sparkles className="w-7 h-7 text-white" />
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      {/* Header */}
+      <header className="flex items-center gap-3 px-6 py-5 border-b border-white/[0.06]">
+        <button
+          onClick={() => router.push("/")}
+          className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+        <div className="flex items-center gap-2 mx-auto">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Upgrade to tataAI Pro</h1>
-          <p className="text-white/50">Unlock unlimited AI power</p>
+          <span className="font-bold text-white tracking-tight">tataI</span>
         </div>
+        <div className="w-14" />
+      </header>
 
-        {success ? (
-          <div className="text-center bg-green-500/10 border border-green-500/20 rounded-2xl p-8">
-            <div className="text-4xl mb-3">🎉</div>
-            <h2 className="text-xl font-bold text-white mb-1">You&apos;re now Pro!</h2>
-            <p className="text-white/50 text-sm">Redirecting you back...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-6">
-            {/* Free */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-              <div className="mb-4">
-                <p className="text-white/50 text-sm font-medium uppercase tracking-wider mb-1">Free</p>
-                <p className="text-3xl font-bold text-white">$0</p>
-                <p className="text-white/30 text-sm">Forever</p>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-3xl">
+          {success ? (
+            <div className="text-center py-20">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-green-500/30">
+                <Check className="w-10 h-10 text-white" />
               </div>
-              <ul className="space-y-2 mb-6">
-                {FREE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-white/60">
-                    <Check className="w-4 h-4 text-white/30 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={() => router.push("/")}
-                className="w-full py-2.5 rounded-xl border border-white/10 text-white/50 text-sm hover:bg-white/5 transition"
-              >
-                Current plan
-              </button>
+              <h2 className="text-3xl font-bold text-white mb-3">Welcome to Pro!</h2>
+              <p className="text-white/40 text-[15px]">You now have unlimited access to tataI.</p>
+              <p className="text-white/25 text-sm mt-2">Redirecting you back...</p>
             </div>
+          ) : (
+            <>
+              {/* Hero */}
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-1.5 mb-5">
+                  <Zap className="w-3.5 h-3.5 text-violet-400" />
+                  <span className="text-violet-400 text-sm font-medium">Simple pricing</span>
+                </div>
+                <h1 className="text-[36px] font-bold text-white mb-3 tracking-tight">
+                  Unlock the full power of tataI
+                </h1>
+                <p className="text-white/40 text-[16px] max-w-md mx-auto">
+                  Upgrade to Pro and get unlimited AI conversations, faster responses, and priority support.
+                </p>
+              </div>
 
-            {/* Pro */}
-            <div className="bg-violet-600/10 border border-violet-500/30 rounded-2xl p-6 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-violet-600 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                  <Zap className="w-3 h-3" /> POPULAR
-                </span>
+              {/* Cards */}
+              <div className="grid grid-cols-2 gap-5">
+                {/* Free */}
+                <div className="bg-white/[0.03] border border-white/[0.08] rounded-3xl p-7">
+                  <div className="mb-6">
+                    <p className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-3">Free</p>
+                    <div className="flex items-end gap-1.5">
+                      <span className="text-4xl font-bold text-white">$0</span>
+                      <span className="text-white/30 text-sm mb-1.5">/ month</span>
+                    </div>
+                  </div>
+                  <ul className="space-y-3 mb-8">
+                    {FREE_FEATURES.map((f) => (
+                      <li key={f} className="flex items-center gap-3 text-sm text-white/40">
+                        <div className="w-5 h-5 rounded-full border border-white/[0.12] flex items-center justify-center flex-shrink-0">
+                          <Check className="w-3 h-3" />
+                        </div>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => router.push("/")}
+                    className="w-full py-3 rounded-xl border border-white/[0.1] text-white/40 text-sm font-medium hover:bg-white/[0.04] transition-colors"
+                  >
+                    Current plan
+                  </button>
+                </div>
+
+                {/* Pro */}
+                <div className="relative bg-gradient-to-b from-violet-500/[0.12] to-indigo-500/[0.06] border border-violet-500/25 rounded-3xl p-7 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+
+                  <div className="absolute top-4 right-4">
+                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-lg shadow-violet-500/30">
+                      <Zap className="w-3 h-3" /> POPULAR
+                    </span>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="text-violet-400 text-xs font-semibold uppercase tracking-widest mb-3">Pro</p>
+                    <div className="flex items-end gap-1.5">
+                      <span className="text-4xl font-bold text-white">$9.99</span>
+                      <span className="text-white/40 text-sm mb-1.5">/ month</span>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-3 mb-7">
+                    {PRO_FEATURES.map(({ text, icon: Icon }) => (
+                      <li key={text} className="flex items-center gap-3 text-sm text-white/80">
+                        <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-3 h-3 text-violet-400" />
+                        </div>
+                        {text}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {error && (
+                    <p className="text-red-400 text-xs mb-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
+                  )}
+
+                  <PayPalScriptProvider
+                    options={{
+                      clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "test",
+                      currency: "USD",
+                    }}
+                  >
+                    <PayPalButtons
+                      style={{ layout: "vertical", color: "gold", shape: "pill", label: "subscribe", height: 44 }}
+                      createOrder={createOrder}
+                      onApprove={onApprove}
+                      onError={() => setError("Payment error. Please try again.")}
+                    />
+                  </PayPalScriptProvider>
+                </div>
               </div>
-              <div className="mb-4">
-                <p className="text-violet-400 text-sm font-medium uppercase tracking-wider mb-1">Pro</p>
-                <p className="text-3xl font-bold text-white">$9.99</p>
-                <p className="text-white/30 text-sm">per month</p>
-              </div>
-              <ul className="space-y-2 mb-6">
-                {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-white/80">
-                    <Check className="w-4 h-4 text-violet-400 flex-shrink-0" />
-                    {f}
-                  </li>
+
+              {/* Trust badges */}
+              <div className="flex items-center justify-center gap-8 mt-8">
+                {[
+                  { icon: Shield, text: "Secure payment via PayPal" },
+                  { icon: Zap, text: "Instant activation" },
+                  { icon: Check, text: "Cancel anytime" },
+                ].map(({ icon: Icon, text }) => (
+                  <div key={text} className="flex items-center gap-2 text-white/25 text-xs">
+                    <Icon className="w-3.5 h-3.5" />
+                    {text}
+                  </div>
                 ))}
-              </ul>
-
-              {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
-
-              <PayPalScriptProvider
-                options={{
-                  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "",
-                  currency: "USD",
-                }}
-              >
-                <PayPalButtons
-                  style={{ layout: "vertical", color: "gold", shape: "rect", label: "pay" }}
-                  createOrder={createOrder}
-                  onApprove={onApprove}
-                  onError={() => setError("Payment error. Please try again.")}
-                />
-              </PayPalScriptProvider>
-            </div>
-          </div>
-        )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

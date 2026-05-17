@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openai("gpt-4o-mini"),
     system:
-      "You are tataAI, a powerful and friendly AI assistant. Be helpful, concise, and smart. You can help with coding, writing, analysis, research, math, and anything else the user needs.",
+      "You are tataI, a powerful and friendly AI assistant. Be helpful, concise, and smart. You can help with coding, writing, analysis, research, math, and anything else the user needs.",
     messages: await convertToModelMessages(messages),
   });
 

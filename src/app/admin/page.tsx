@@ -24,7 +24,7 @@ export default async function AdminPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold">tataAI Admin</h1>
+          <h1 className="text-2xl font-bold">tataI Admin</h1>
         </div>
 
         {/* Stats */}
