@@ -624,8 +624,7 @@ export default function Home() {
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            {/* Hide logo on mobile — welcome screen already shows it */}
-            <TataILogo className="hidden sm:block w-7 h-7" />
+            <TataILogo className="w-7 h-7" />
             <span className="font-semibold text-[15px] text-neutral-900 dark:text-white">tatAI</span>
           </div>
           <button onClick={newChat} title="New chat" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-500 dark:text-white/50">
