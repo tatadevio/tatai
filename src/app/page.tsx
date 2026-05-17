@@ -112,27 +112,29 @@ function MessageActions({ text, onRegenerate, isLast, sessionId, getMessages }: 
 
   async function share() {
     setSharing(true);
+    let url = window.location.href; // always has ?chat=id now
     try {
       const msgs = getMessages?.() ?? [];
-      const res = await fetch("/api/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs, title: msgs[0]?.content?.slice(0, 60) || "Shared Chat" }),
-      });
-      const data = await res.json();
-      const url = data.url ? `${window.location.origin}${data.url}` : window.location.href;
-      if (navigator.share) {
-        navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(url);
-        setShared(true);
-        setTimeout(() => setShared(false), 2000);
+      if (msgs.length > 0) {
+        const res = await fetch("/api/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: msgs, title: msgs[0]?.content?.slice(0, 60) || "Shared Chat" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) url = `${window.location.origin}${data.url}`;
+        }
       }
-    } catch {
-      navigator.clipboard.writeText(window.location.href);
+    } catch {}
+    if (navigator.share) {
+      navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
       setShared(true);
       setTimeout(() => setShared(false), 2000);
-    } finally { setSharing(false); }
+    }
+    setSharing(false);
   }
 
   const btn = "p-1.5 rounded-lg text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-all active:scale-95";
@@ -301,6 +303,18 @@ export default function Home() {
 
   // Storage key scoped to logged-in user (or empty string for guests)
   const storageKey = user ? `tatai_sessions_${user.uid}` : null;
+
+  // Sync URL bar with active session
+  useEffect(() => {
+    if (activeSession) {
+      const url = `/?chat=${activeSession}`;
+      if (window.location.pathname + window.location.search !== url) {
+        window.history.replaceState(null, "", url);
+      }
+    } else {
+      if (window.location.search) window.history.replaceState(null, "", "/");
+    }
+  }, [activeSession]);
 
   // Load sessions from localStorage when user changes
   useEffect(() => {
@@ -701,7 +715,7 @@ export default function Home() {
         body: JSON.stringify({ messages: plainMsgs, title: session?.title || "Shared Chat" }),
       });
       const data = await res.json();
-      const url = data.url ? `${window.location.origin}${data.url}` : `${window.location.origin}/?chat=${id}`;
+      const url = (res.ok && data.url) ? `${window.location.origin}${data.url}` : `${window.location.origin}/?chat=${id}`;
       navigator.clipboard.writeText(url);
     } catch {
       navigator.clipboard.writeText(`${window.location.origin}/?chat=${id}`);
