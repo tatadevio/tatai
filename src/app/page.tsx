@@ -767,18 +767,6 @@ export default function Home() {
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
-                onPaste={(e) => {
-                  // Handle file/image paste directly in textarea
-                  const items = Array.from(e.clipboardData.items);
-                  const files = items
-                    .filter(item => item.kind === "file")
-                    .map(item => item.getAsFile())
-                    .filter(Boolean) as File[];
-                  if (files.length > 0) {
-                    e.preventDefault();
-                    addFiles(files);
-                  }
-                }}
                 placeholder={attachments.length > 0 ? "Add a message or just send the file..." : "Message tataI"}
                 rows={1}
                 className="w-full resize-none bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-[14.5px] leading-relaxed tracking-[-0.01em] px-4 pt-3.5 pb-12 focus:outline-none min-h-[56px] max-h-[200px]"
