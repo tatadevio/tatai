@@ -2,14 +2,14 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Send, Plus, Code, FileText, Search, Zap, Crown,
   MessageSquare, Settings, Info, Shield, FileTerminal,
   PanelLeft, Copy, Check, User, ChevronUp, LogIn, LogOut,
   Paperclip, Image as ImageIcon, X as XIcon, File, ChevronDown,
-  Zap as ZapIcon, Mic, MicOff, Volume2,
+  Zap as ZapIcon, Mic, MicOff, Volume2, Video, VideoOff, PhoneOff,
   ThumbsUp, ThumbsDown, RefreshCw, Share2,
   MoreHorizontal, Pin, Pencil, Trash2, Link,
 } from "lucide-react";
@@ -25,7 +25,7 @@ const TATAI_MODELS = [
     id: "tatai-flash",
     name: "Zara",
     fullName: "Flash",
-    desc: "Lightning fast answers",
+    descKey: "modelFlashDesc",
     apiModel: "gpt-4o-mini",
     icon: ZapIcon,
     color: "text-amber-500",
@@ -37,7 +37,7 @@ const TATAI_MODELS = [
     id: "tatai-smart",
     name: "Nova",
     fullName: "Nova",
-    desc: "Best for most tasks",
+    descKey: "modelNovaDesc",
     apiModel: "gpt-4o",
     icon: MessageSquare,
     color: "text-blue-500",
@@ -49,7 +49,7 @@ const TATAI_MODELS = [
     id: "tatai-think",
     name: "Orion",
     fullName: "Orion",
-    desc: "Deep reasoning & analysis",
+    descKey: "modelOrionDesc",
     apiModel: "o4-mini",
     icon: Zap,
     color: "text-violet-500",
@@ -61,12 +61,6 @@ const TATAI_MODELS = [
 
 type ModelId = typeof TATAI_MODELS[number]["id"];
 
-const SUGGESTIONS = [
-  { icon: Code, label: "Write code", desc: "Debug, build, explain", prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
-  { icon: FileText, label: "Draft content", desc: "Emails, posts, docs", prompt: "Write a professional LinkedIn post about launching a new AI startup." },
-  { icon: Search, label: "Research", desc: "Explain anything", prompt: "Explain how large language models work in simple terms." },
-  { icon: Zap, label: "Brainstorm", desc: "Ideas & strategy", prompt: "Give me 10 startup ideas in the AI space for 2026." },
-];
 
 const BOTTOM_LINK_DEFS = [
   { icon: Settings, key: "settings" as const, href: "/settings" },
@@ -113,7 +107,7 @@ function MessageActions({ text, onRegenerate, isLast, sessionId, getMessages }: 
 
   async function share() {
     setSharing(true);
-    let url = window.location.href; // always has ?chat=id now
+    let url = "";
     try {
       const msgs = getMessages?.() ?? [];
       if (msgs.length > 0) {
@@ -128,6 +122,7 @@ function MessageActions({ text, onRegenerate, isLast, sessionId, getMessages }: 
         }
       }
     } catch {}
+    if (!url) url = window.location.href;
     if (navigator.share) {
       navigator.share({ title: "tatAI — Your AI Assistant", url }).catch(() => {});
     } else {
@@ -244,6 +239,25 @@ export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading, logout, setShowLogin } = useAuth();
   const t = useTranslation();
+  const SUGGESTIONS = useMemo(() => {
+    const pool = [
+      { icon: Code, label: t.suggWriteCode, desc: t.suggWriteCodeDesc, prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
+      { icon: FileText, label: t.suggDraft, desc: t.suggDraftDesc, prompt: "Write a professional LinkedIn post about launching a new AI startup." },
+      { icon: Search, label: t.suggResearch, desc: t.suggResearchDesc, prompt: "Explain how large language models work in simple terms." },
+      { icon: Zap, label: t.suggBrainstorm, desc: t.suggBrainstormDesc, prompt: "Give me 10 startup ideas in the AI space for 2026." },
+      { icon: Code, label: "Fix a bug", desc: "Paste code, get fix", prompt: "Here's my code — can you find and fix the bug?" },
+      { icon: FileText, label: "Write an email", desc: "Clear & professional", prompt: "Write a professional follow-up email after a job interview." },
+      { icon: Search, label: "Summarize text", desc: "TL;DR anything", prompt: "Summarize the following article in 5 bullet points:" },
+      { icon: Zap, label: "Plan my week", desc: "Productive schedule", prompt: "Help me plan a productive week as a startup founder." },
+      { icon: Code, label: "Learn a concept", desc: "Simple explanations", prompt: "Explain REST APIs like I'm 10 years old." },
+      { icon: FileText, label: "Write a bio", desc: "About me & LinkedIn", prompt: "Write a short professional bio for my LinkedIn profile. I'm a software engineer at a startup." },
+      { icon: Search, label: "Compare options", desc: "Pros & cons", prompt: "Compare React vs Vue vs Angular for a new web project in 2026." },
+      { icon: Zap, label: "Generate ideas", desc: "Creative thinking", prompt: "Give me 10 creative content ideas for a tech YouTube channel." },
+    ];
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 4);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isPro, setIsPro] = useState(false);
 
   // Check Pro status from Supabase when user logs in
@@ -282,6 +296,28 @@ export default function Home() {
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [voiceSpeaking, setVoiceSpeaking] = useState(false);
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const [voiceMuted, setVoiceMuted] = useState(false);
+  const [voiceIsVideo, setVoiceIsVideo] = useState(false);
+  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+  // Inline voice-to-text recorder (mic button — separate from full call)
+  const [inlineRecording, setInlineRecording] = useState(false);
+  const [inlineTranscript, setInlineTranscript] = useState("");
+  const inlineRecorderRef = useRef<MediaRecorder | null>(null);
+  const inlineChunksRef = useRef<Blob[]>([]);
+  const inlineStreamRef = useRef<MediaStream | null>(null);
+  const voiceMenuRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceActiveRef = useRef(false);
+  const voiceMutedRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -325,6 +361,8 @@ export default function Home() {
     setMessages([]);
     if (!user) return;
 
+    const urlChatId = new URLSearchParams(window.location.search).get("chat");
+
     // Try Redis first (cloud history)
     user.getIdToken().then(token =>
       fetch("/api/conversations", { headers: { Authorization: `Bearer ${token}` } })
@@ -337,16 +375,20 @@ export default function Home() {
             const saved = localStorage.getItem(storageKey);
             if (saved) setSessions(JSON.parse(saved));
           }
+          // Auto-load chat from URL after sessions are ready
+          if (urlChatId) loadSession(urlChatId);
         })
         .catch(() => {
           if (storageKey) {
             const saved = localStorage.getItem(storageKey);
             if (saved) { try { setSessions(JSON.parse(saved)); } catch {} }
           }
+          if (urlChatId) loadSession(urlChatId);
         })
     ).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
+
 
   // If selected model is Pro-only but user isn't Pro, fall back to Nova
   const effectiveModel = (TATAI_MODELS.find(m => m.id === selectedModel)?.proOnly && !isPro)
@@ -506,99 +548,267 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!showVoiceMenu) return;
+    function close(e: MouseEvent) {
+      if (voiceMenuRef.current && !voiceMenuRef.current.contains(e.target as Node)) {
+        setShowVoiceMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [showVoiceMenu]);
+
   function removeAttachment(i: number) {
     setAttachments((p) => p.filter((_, idx) => idx !== i));
     setAttachPreviews((p) => p.filter((_, idx) => idx !== i));
   }
 
-  // ── Voice functions ──
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function getSR(): any {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    return w.SpeechRecognition || w.webkitSpeechRecognition || null;
-  }
-
-  function startVoiceMode() {
-    const SR = getSR();
-    if (!SR) { alert("Voice not supported in this browser. Try Chrome."); return; }
-    synthRef.current = window.speechSynthesis;
-    setVoiceActive(true);
-    startListening(SR);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function startListening(SR: any) {
-    const rec = new SR();
-    rec.lang = "auto"; // auto-detect language
-    rec.continuous = false;
-    rec.interimResults = true;
-    rec.onstart = () => setVoiceListening(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const t = Array.from(e.results).map((r: any) => r[0].transcript).join("");
-      setVoiceTranscript(t);
-    };
-    rec.onend = () => {
-      setVoiceListening(false);
-      setVoiceTranscript(prev => {
-        if (prev.trim()) {
-          sendVoiceMessage(prev.trim());
-        }
-        return "";
-      });
-    };
-    rec.onerror = () => setVoiceListening(false);
-    recognitionRef.current = rec;
-    rec.start();
-  }
-
-  function sendVoiceMessage(text: string) {
-    setInput(text);
-    const sessionId = activeSession ?? Date.now().toString();
-    if (!activeSession) {
-      setSessions(p => [{ id: sessionId, title: text.slice(0, 40) }, ...p]);
-      setActiveSession(sessionId);
+  // ── Inline voice recorder (mic button → transcribe → insert text) ──
+  async function startInlineRecording() {
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      inlineStreamRef.current = stream;
+    } catch {
+      alert("Microphone access is required.");
+      return;
     }
-    sendMessage({ text });
-    setInput("");
+    inlineChunksRef.current = [];
+    setInlineTranscript("");
+    const recorder = new MediaRecorder(stream);
+    inlineRecorderRef.current = recorder;
+    recorder.ondataavailable = e => { if (e.data.size > 0) inlineChunksRef.current.push(e.data); };
+    recorder.onstop = async () => {
+      inlineStreamRef.current?.getTracks().forEach(t => t.stop());
+      inlineStreamRef.current = null;
+      const blob = new Blob(inlineChunksRef.current, { type: "audio/webm" });
+      if (blob.size < 1000) return;
+      try {
+        const form = new FormData();
+        form.append("audio", blob, "audio.webm");
+        const res = await fetch("/api/transcribe", { method: "POST", body: form });
+        const { text } = await res.json();
+        if (text?.trim()) setInlineTranscript(text.trim());
+      } catch { /* silent */ }
+    };
+    recorder.start();
+    setInlineRecording(true);
+  }
+
+  function stopInlineRecording() {
+    inlineRecorderRef.current?.stop();
+    setInlineRecording(false);
+  }
+
+  function cancelInlineRecording() {
+    inlineRecorderRef.current?.stop();
+    inlineStreamRef.current?.getTracks().forEach(t => t.stop());
+    inlineStreamRef.current = null;
+    setInlineRecording(false);
+    setInlineTranscript("");
+  }
+
+  function sendInlineTranscript() {
+    if (!inlineTranscript.trim()) return;
+    setInput(inlineTranscript.trim());
+    setInlineTranscript("");
+  }
+
+  // ── Voice functions (Whisper + OpenAI TTS) ──
+  async function startVoiceMode(withVideo = false) {
+    setShowVoiceMenu(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: withVideo ? { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+      });
+      micStreamRef.current = stream;
+      if (withVideo) {
+        // Attach video track to video element after state is set
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+        }, 100);
+      }
+    } catch {
+      alert(withVideo ? "Camera and microphone access are required for video calls." : "Microphone access is required for voice calls.");
+      return;
+    }
+    voiceActiveRef.current = true;
+    voiceMutedRef.current = false;
+    setVoiceSeconds(0);
+    setVoiceIsVideo(withVideo);
+    setVoiceActive(true);
+    setVoiceMuted(false);
+    voiceTimerRef.current = setInterval(() => setVoiceSeconds(s => s + 1), 1000);
+    startListeningWhisper();
+  }
+
+  function startListeningWhisper() {
+    if (!voiceActiveRef.current || voiceMutedRef.current || !micStreamRef.current) return;
+
+    // Set up AudioContext for silence detection
+    const ctx = new AudioContext();
+    audioContextRef.current = ctx;
+    const source = ctx.createMediaStreamSource(micStreamRef.current);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    analyserRef.current = analyser;
+
+    const recorder = new MediaRecorder(micStreamRef.current);
+    mediaRecorderRef.current = recorder;
+    audioChunksRef.current = [];
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunksRef.current.push(e.data);
+    };
+
+    recorder.onstop = async () => {
+      ctx.close().catch(() => {});
+      if (!voiceActiveRef.current) return;
+      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      if (blob.size < 2000) {
+        // too short — just start listening again
+        if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 300);
+        return;
+      }
+      await transcribeAndReply(blob);
+    };
+
+    recorder.start();
+    setVoiceListening(true);
+    setVoiceTranscript("");
+
+    // Silence detection — stop after 2s of silence
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let silentFrames = 0;
+
+    function checkSilence() {
+      if (!voiceActiveRef.current || recorder.state !== "recording") return;
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      if (avg < 8) {
+        silentFrames++;
+        if (silentFrames > 45) { // ~2s at 60fps
+          recorder.stop();
+          setVoiceListening(false);
+          return;
+        }
+      } else {
+        silentFrames = 0;
+      }
+      requestAnimationFrame(checkSilence);
+    }
+    requestAnimationFrame(checkSilence);
+  }
+
+  async function transcribeAndReply(blob: Blob) {
+    if (!voiceActiveRef.current) return;
+    try {
+      const form = new FormData();
+      form.append("audio", blob, "audio.webm");
+      const res = await fetch("/api/transcribe", { method: "POST", body: form });
+      const { text } = await res.json();
+      if (!text?.trim() || !voiceActiveRef.current) {
+        if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 300);
+        return;
+      }
+      setVoiceTranscript(text.trim());
+
+      // Send to AI
+      const sessionId = activeSession ?? Date.now().toString();
+      if (!activeSession) {
+        setSessions(p => [{ id: sessionId, title: text.slice(0, 40) }, ...p]);
+        setActiveSession(sessionId);
+      }
+      setInput(text.trim());
+      sendMessage({ text: text.trim() });
+      setInput("");
+    } catch {
+      if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 500);
+    }
+  }
+
+  async function speakWithTTS(text: string) {
+    if (!voiceActiveRef.current) return;
+    currentAudioRef.current?.pause();
+    setVoiceSpeaking(true);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok || !voiceActiveRef.current) throw new Error("tts failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setVoiceSpeaking(false);
+        setVoiceTranscript("");
+        if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 400);
+      };
+      audio.onerror = () => {
+        setVoiceSpeaking(false);
+        if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 400);
+      };
+      await audio.play();
+    } catch {
+      setVoiceSpeaking(false);
+      if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 400);
+    }
+  }
+
+  function toggleVoiceMute() {
+    const next = !voiceMutedRef.current;
+    voiceMutedRef.current = next;
+    setVoiceMuted(next);
+    if (next) {
+      // Mute — stop recording
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      setVoiceListening(false);
+    } else {
+      // Unmute — start listening again
+      setTimeout(startListeningWhisper, 300);
+    }
   }
 
   function stopVoiceMode() {
-    recognitionRef.current?.stop();
-    synthRef.current?.cancel();
+    voiceActiveRef.current = false;
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    micStreamRef.current?.getTracks().forEach(t => t.stop());
+    micStreamRef.current = null;
+    audioContextRef.current?.close().catch(() => {});
+    currentAudioRef.current?.pause();
+    currentAudioRef.current = null;
+    if (videoRef.current) { videoRef.current.srcObject = null; }
+    if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     setVoiceActive(false);
     setVoiceListening(false);
     setVoiceTranscript("");
     setVoiceSpeaking(false);
+    setVoiceSeconds(0);
+    setVoiceMuted(false);
+    setVoiceIsVideo(false);
   }
 
-  // Speak AI response aloud when in voice mode
+  // Speak AI response via TTS when in voice mode
   useEffect(() => {
-    if (!voiceActive || isLoading || !synthRef.current) return;
+    if (!voiceActive || isLoading) return;
     const lastAI = [...messages].reverse().find(m => m.role === "assistant");
     if (!lastAI) return;
-    const text = lastAI.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("").slice(0, 500);
+    const text = lastAI.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("").slice(0, 600);
     if (!text) return;
-    synthRef.current.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 1.1;
-    utt.pitch = 1;
-    // Pick a good voice
-    const voices: SpeechSynthesisVoice[] = synthRef.current.getVoices();
-    const preferred = voices.find((v: SpeechSynthesisVoice) => v.name.includes("Google") && v.lang.startsWith("en"))
-      || voices.find((v: SpeechSynthesisVoice) => v.lang.startsWith("en") && !v.name.includes("eSpeak"))
-      || voices[0];
-    if (preferred) utt.voice = preferred;
-    utt.onstart = () => setVoiceSpeaking(true);
-    utt.onend = () => {
-      setVoiceSpeaking(false);
-      // Auto-listen again after speaking
-      const SR = getSR();
-      if (SR && voiceActive) setTimeout(() => startListening(SR), 400);
-    };
-    synthRef.current.speak(utt);
+    speakWithTTS(text);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isLoading]);
 
@@ -769,21 +979,38 @@ export default function Home() {
   async function shareSession(id: string) {
     setCtxMenu(null);
     try {
-      const saved = localStorage.getItem(`tatai_msgs_${user?.uid}_${id}`);
-      const msgs = saved ? JSON.parse(saved) : [];
       const session = sessions.find(s => s.id === id);
-      const plainMsgs = msgs.map((m: {role:string; parts?: {type:string;text?:string}[]; content?: string}) => ({
-        role: m.role,
-        content: m.parts?.filter((p: {type:string}) => p.type === "text").map((p: {type:string;text?:string}) => p.text ?? "").join("") ?? m.content ?? "",
-      }));
-      const res = await fetch("/api/share", {
+
+      // Get messages: prefer in-memory (if active), else fetch from API
+      let rawMsgs: typeof messages = [];
+      if (id === activeSession && messages.length > 0) {
+        rawMsgs = messages;
+      } else if (user) {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/conversations?id=${id}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          rawMsgs = data.messages ?? [];
+        }
+      }
+
+      const plainMsgs = rawMsgs.map((m: any) => ({
+        role: m.role as string,
+        content: Array.isArray(m.parts)
+          ? m.parts.filter((p: any) => p.type === "text").map((p: any) => p.text ?? "").join("")
+          : (m.content ?? ""),
+      })).filter((m: any) => m.content);
+
+      const shareRes = await fetch("/api/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: plainMsgs, title: session?.title || "Shared Chat" }),
       });
-      const data = await res.json();
-      const url = (res.ok && data.url) ? `${window.location.origin}${data.url}` : `${window.location.origin}/?chat=${id}`;
-      navigator.clipboard.writeText(url);
+      const data = await shareRes.json();
+      const url = (shareRes.ok && data.url)
+        ? `${window.location.origin}${data.url}`
+        : `${window.location.origin}/?chat=${id}`;
+      await navigator.clipboard.writeText(url);
     } catch {
       navigator.clipboard.writeText(`${window.location.origin}/?chat=${id}`);
     }
@@ -1028,7 +1255,7 @@ export default function Home() {
                                 "bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400"
                               }`}>{m.badge}</span>
                             </div>
-                            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{m.desc}</p>
+                            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{t[m.descKey as keyof typeof t]}</p>
                           </div>
                           {locked ? (
                             <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
@@ -1052,7 +1279,7 @@ export default function Home() {
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[12px] font-semibold hover:opacity-90 transition-opacity shadow-sm shadow-violet-500/20"
               >
                 <Crown className="w-3 h-3" />
-                Upgrade
+                {t.upgrade}
               </button>
             )}
             {isMobile && (
@@ -1072,10 +1299,10 @@ export default function Home() {
             /* ── Welcome screen ── */
             <div className="flex flex-col items-center justify-center min-h-full px-4 pb-40 pt-10">
               <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight text-neutral-900 dark:text-white mb-2 text-center">
-                How can I help you?
+                {t.howCanIHelp}
               </h1>
               <p className="text-neutral-500 dark:text-neutral-400 text-[14px] sm:text-[15px] mb-9 text-center font-normal">
-                Your intelligent AI assistant, always ready
+                {t.alwaysReady}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-[540px]">
                 {SUGGESTIONS.map(({ icon: Icon, label, desc, prompt }) => (
@@ -1243,7 +1470,60 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Textarea */}
+              {/* Inline voice recorder bar — replaces textarea while recording/showing transcript */}
+              {(inlineRecording || inlineTranscript) ? (
+                <div className="flex items-center gap-3 px-4 pt-3 pb-2 min-h-[56px]">
+                  {/* Cancel */}
+                  <button
+                    onClick={cancelInlineRecording}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-neutral-100 dark:bg-white/[0.06] hover:bg-red-50 dark:hover:bg-red-500/10 text-neutral-400 dark:text-white/40 hover:text-red-500 transition-colors flex-shrink-0"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </button>
+
+                  {/* Waveform / transcript */}
+                  <div className="flex-1 min-w-0">
+                    {inlineRecording && !inlineTranscript ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-neutral-400 dark:text-white/40 mr-2">Listening…</span>
+                        <div className="flex items-end gap-[3px] h-5">
+                          {[8,14,20,16,10,18,12].map((h, i) => (
+                            <div
+                              key={i}
+                              className="voice-bar"
+                              style={{
+                                height: h,
+                                background: "#2563eb",
+                                animationDuration: `${0.7 + i * 0.07}s`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[14px] text-neutral-800 dark:text-white leading-snug truncate">{inlineTranscript}</p>
+                    )}
+                  </div>
+
+                  {/* Send / confirm */}
+                  {inlineTranscript ? (
+                    <button
+                      onClick={sendInlineTranscript}
+                      className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center flex-shrink-0 transition-colors"
+                    >
+                      <Check className="w-4 h-4 text-white" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={stopInlineRecording}
+                      className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center flex-shrink-0 transition-colors"
+                    >
+                      <Check className="w-4 h-4 text-white" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+              /* Textarea */
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -1253,6 +1533,7 @@ export default function Home() {
                 rows={1}
                 className="w-full resize-none bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-[14.5px] leading-relaxed tracking-[-0.01em] px-4 pt-3.5 pb-12 focus:outline-none min-h-[56px] max-h-[200px]"
               />
+              )}
 
               {/* Toolbar */}
               <div className="flex items-center justify-between px-3 pb-2.5">
@@ -1292,13 +1573,49 @@ export default function Home() {
 
                 {/* Right actions */}
                 <div className="flex items-center gap-1.5">
+                  {/* Mic — inline voice-to-text recorder */}
                   <button
-                    onClick={startVoiceMode}
-                    title="Voice chat"
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                    onClick={inlineRecording ? stopInlineRecording : startInlineRecording}
+                    title="Record voice"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      inlineRecording
+                        ? "bg-blue-500 text-white animate-pulse"
+                        : "text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-blue-500 dark:hover:text-blue-400"
+                    }`}
                   >
                     <Mic className="w-[17px] h-[17px]" />
                   </button>
+
+                  {/* Call button — Voice / Video call dropdown */}
+                  <div className="relative" ref={voiceMenuRef}>
+                    <button
+                      onClick={() => setShowVoiceMenu(v => !v)}
+                      title="Voice or Video call"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/[0.08] hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                    >
+                      <svg className="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.9 12.87 19.79 19.79 0 0 1 1.92 4.27 2 2 0 0 1 3.9 2.1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                    </button>
+                    {showVoiceMenu && (
+                      <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-[#1a1a1a] border border-neutral-200 dark:border-white/[0.08] rounded-xl shadow-xl py-1 min-w-[160px] z-50">
+                        <button
+                          onClick={() => startVoiceMode(false)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition-colors"
+                        >
+                          <Mic className="w-4 h-4 text-blue-500" />
+                          Voice Call
+                        </button>
+                        <button
+                          onClick={() => startVoiceMode(true)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition-colors"
+                        >
+                          <Video className="w-4 h-4 text-blue-500" />
+                          Video Call
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     onClick={handleSend}
@@ -1322,87 +1639,167 @@ export default function Home() {
 
         {/* ── Voice Mode Overlay ── */}
         {voiceActive && (
-          <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0a0a0a" }}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-2">
+          <div
+            className="fixed inset-0 z-50 flex flex-col select-none"
+            style={{ background: "linear-gradient(160deg, #0f1629 0%, #111827 50%, #0a0f1e 100%)" }}
+          >
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <div className="flex items-center gap-2">
-                <TataILogo className="w-6 h-6" />
-                <span className="text-white/70 text-sm font-semibold">tatAI</span>
+                <TataILogo className="w-5 h-5" />
+                <span className="text-white/60 text-sm font-semibold">tatAI</span>
+                {voiceIsVideo && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/20">VIDEO</span>
+                )}
               </div>
-              <button
-                onClick={stopVoiceMode}
-                className="w-8 h-8 rounded-full bg-white/[0.08] hover:bg-white/[0.14] flex items-center justify-center transition-colors"
-              >
-                <XIcon className="w-4 h-4 text-white/60" />
-              </button>
+              {/* Timer pill */}
+              <div className="flex items-center gap-1.5 bg-white/[0.06] border border-white/[0.08] rounded-full px-3 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-xs font-mono text-white/50 tabular-nums">
+                  {String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:{String(voiceSeconds % 60).padStart(2, "0")}
+                </span>
+              </div>
             </div>
 
-            {/* Main area */}
-            <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6">
-              {/* Waveform */}
-              <div className="flex items-center justify-center gap-[5px] h-20">
-                {[40, 60, 80, 56, 72, 64, 48].map((maxH, i) => (
-                  <div
-                    key={i}
-                    className={`voice-bar ${!(voiceListening || voiceSpeaking) ? "voice-bar-idle" : ""}`}
-                    style={{
-                      height: `${maxH}px`,
-                      background: voiceSpeaking
-                        ? `linear-gradient(180deg, #818cf8, #6366f1)`
-                        : voiceListening
-                        ? `linear-gradient(180deg, #f472b6, #ec4899)`
-                        : "rgba(255,255,255,0.12)",
-                      animationDuration: voiceSpeaking ? `${0.7 + i * 0.08}s` : `${1.0 + i * 0.07}s`,
-                    }}
+            {/* Main content */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 overflow-hidden">
+              {voiceIsVideo ? (
+                /* Video mode — user camera fills center */
+                <div className="relative w-full max-w-[600px] rounded-3xl overflow-hidden bg-black"
+                  style={{ aspectRatio: "16/9", boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.6)" }}
+                >
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover scale-x-[-1]"
                   />
-                ))}
-              </div>
+                  {/* AI avatar pip in corner */}
+                  <div className="absolute bottom-4 right-4 w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/10"
+                    style={{ background: voiceSpeaking ? "linear-gradient(135deg,#16a34a,#22c55e)" : "linear-gradient(135deg,#1d4ed8,#2563eb,#3b82f6)" }}
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span style={{ filter: "brightness(10)" }}><TataILogo className="w-8 h-8" /></span>
+                    </div>
+                  </div>
+                  {/* Speaking indicator overlay */}
+                  {voiceSpeaking && (
+                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 rounded-full px-3 py-1.5">
+                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-white text-xs font-medium">AI Speaking</span>
+                    </div>
+                  )}
+                  {voiceListening && (
+                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-blue-600/70 rounded-full px-3 py-1.5">
+                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                      <span className="text-white text-xs font-medium">Listening…</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Voice mode — avatar with pulsing rings */
+                <div className="relative flex items-center justify-center" style={{ width: 180, height: 180 }}>
+                  {(voiceListening || voiceSpeaking) && (
+                    <>
+                      <div className={voiceSpeaking ? "call-ring-speaking-1" : "call-ring-1"} />
+                      <div className={voiceSpeaking ? "call-ring-speaking-2" : "call-ring-2"} />
+                    </>
+                  )}
+                  <div
+                    className={`relative z-10 flex items-center justify-center rounded-full ${voiceListening || voiceSpeaking ? "call-avatar-active" : ""}`}
+                    style={{
+                      width: 120,
+                      height: 120,
+                      background: voiceSpeaking
+                        ? "linear-gradient(135deg, #16a34a, #22c55e)"
+                        : "linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6)",
+                      boxShadow: voiceSpeaking
+                        ? "0 0 48px rgba(34,197,94,0.4)"
+                        : "0 0 48px rgba(37,99,235,0.5)",
+                    }}
+                  >
+                    <span style={{ filter: "brightness(10)" }}><TataILogo className="w-14 h-14" /></span>
+                  </div>
+                </div>
+              )}
 
               {/* Status */}
               <div className="text-center">
-                <p className="text-white text-[22px] font-semibold tracking-tight mb-1">
-                  {voiceSpeaking ? "tatAI is speaking" : voiceListening ? "Listening…" : "Tap mic to speak"}
-                </p>
-                {voiceTranscript ? (
-                  <p className="text-white/40 text-[14px] max-w-[280px] mx-auto leading-relaxed">{voiceTranscript}</p>
-                ) : (
-                  <p className="text-white/25 text-[13px]">
-                    {voiceSpeaking ? "Processing your response…" : "Say something to tatAI"}
+                <p className="text-white text-xl font-bold tracking-tight mb-2">tatAI</p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-end gap-[3px] h-5">
+                    {[0,1,2,3,4].map(i => (
+                      <div
+                        key={i}
+                        className={`call-sound-bar ${!(voiceListening || voiceSpeaking) ? "call-sound-bar-idle" : ""}`}
+                        style={{
+                          background: voiceSpeaking ? "#22c55e" : voiceListening ? "#3b82f6" : "rgba(255,255,255,0.2)",
+                          animationDuration: voiceSpeaking ? `${0.55 + i * 0.07}s` : `${0.85 + i * 0.08}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-white/50 text-sm font-medium">
+                    {voiceSpeaking ? "Speaking…" : voiceListening ? "Listening…" : "Ready"}
                   </p>
+                </div>
+                {voiceTranscript && (
+                  <p className="text-white/30 text-[12px] mt-3 max-w-[280px] mx-auto leading-relaxed italic">"{voiceTranscript}"</p>
                 )}
               </div>
             </div>
 
             {/* Bottom controls */}
-            <div className="flex items-center justify-center gap-5 pb-16 pt-4">
-              {/* Mute / unmute */}
-              <button
-                onClick={() => {
-                  if (voiceListening) {
-                    recognitionRef.current?.stop();
-                  } else {
-                    const SR = getSR();
-                    if (SR) startListening(SR);
-                  }
-                }}
-                className={`w-[60px] h-[60px] rounded-full flex items-center justify-center transition-all active:scale-95 ${
-                  voiceListening
-                    ? "bg-white text-neutral-900 shadow-lg shadow-white/20"
-                    : "bg-white/[0.1] border border-white/[0.15] text-white/60 hover:bg-white/[0.16]"
-                }`}
-              >
-                {voiceListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-              </button>
+            <div className="pb-14 px-10">
+              <div className="flex items-center justify-center gap-6">
+                {/* Mute */}
+                <div className="flex flex-col items-center gap-1.5">
+                  <button
+                    onClick={toggleVoiceMute}
+                    className={`w-[56px] h-[56px] rounded-full flex items-center justify-center transition-all active:scale-90 ${
+                      voiceMuted
+                        ? "bg-red-500/20 border border-red-500/30"
+                        : "bg-white/[0.08] border border-white/[0.12]"
+                    }`}
+                  >
+                    {voiceMuted
+                      ? <MicOff className="w-5 h-5 text-red-400" />
+                      : <Mic className="w-5 h-5 text-white/70" />
+                    }
+                  </button>
+                  <span className="text-white/25 text-[10px] font-medium">{voiceMuted ? "Unmute" : "Mute"}</span>
+                </div>
 
-              {/* End call */}
-              <button
-                onClick={stopVoiceMode}
-                className="w-[60px] h-[60px] rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg shadow-red-500/30 active:scale-95"
-              >
-                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-                </svg>
-              </button>
+                {/* End call */}
+                <div className="flex flex-col items-center gap-1.5">
+                  <button
+                    onClick={stopVoiceMode}
+                    className="w-[68px] h-[68px] rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all active:scale-90"
+                    style={{ boxShadow: "0 8px 32px rgba(239,68,68,0.5)" }}
+                  >
+                    <PhoneOff className="w-6 h-6 text-white" />
+                  </button>
+                  <span className="text-white/25 text-[10px] font-medium">End</span>
+                </div>
+
+                {/* Camera toggle (video mode only) */}
+                {voiceIsVideo ? (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <button className="w-[56px] h-[56px] rounded-full bg-white/[0.08] border border-white/[0.12] flex items-center justify-center">
+                      <Video className="w-5 h-5 text-white/70" />
+                    </button>
+                    <span className="text-white/25 text-[10px] font-medium">Camera</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <button className="w-[56px] h-[56px] rounded-full bg-white/[0.08] border border-white/[0.12] flex items-center justify-center">
+                      <Volume2 className="w-5 h-5 text-white/70" />
+                    </button>
+                    <span className="text-white/25 text-[10px] font-medium">Speaker</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

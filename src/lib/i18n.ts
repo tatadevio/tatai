@@ -63,6 +63,23 @@ export interface Translations {
   listening: string;
   speaking: string;
   tapToSpeak: string;
+  tataiSpeaking: string;
+  saySmth: string;
+  // Welcome / suggestions
+  howCanIHelp: string;
+  alwaysReady: string;
+  suggWriteCode: string;
+  suggWriteCodeDesc: string;
+  suggDraft: string;
+  suggDraftDesc: string;
+  suggResearch: string;
+  suggResearchDesc: string;
+  suggBrainstorm: string;
+  suggBrainstormDesc: string;
+  // Model descriptions
+  modelFlashDesc: string;
+  modelNovaDesc: string;
+  modelOrionDesc: string;
 }
 
 const en: Translations = {
@@ -119,6 +136,21 @@ const en: Translations = {
   listening: "Listening…",
   speaking: "Speaking…",
   tapToSpeak: "Tap to speak",
+  tataiSpeaking: "tatAI is speaking",
+  saySmth: "Say something to tatAI",
+  howCanIHelp: "How can I help you?",
+  alwaysReady: "Your intelligent AI assistant, always ready",
+  suggWriteCode: "Write code",
+  suggWriteCodeDesc: "Debug, build, explain",
+  suggDraft: "Draft content",
+  suggDraftDesc: "Emails, posts, docs",
+  suggResearch: "Research",
+  suggResearchDesc: "Explain anything",
+  suggBrainstorm: "Brainstorm",
+  suggBrainstormDesc: "Ideas & strategy",
+  modelFlashDesc: "Lightning fast answers",
+  modelNovaDesc: "Best for most tasks",
+  modelOrionDesc: "Deep reasoning & analysis",
 };
 
 const ar: Translations = {
@@ -175,6 +207,21 @@ const ar: Translations = {
   listening: "جارٍ الاستماع…",
   speaking: "جارٍ التحدث…",
   tapToSpeak: "اضغط للتحدث",
+  tataiSpeaking: "tatAI يتحدث",
+  saySmth: "قل شيئاً لـ tatAI",
+  howCanIHelp: "كيف يمكنني مساعدتك؟",
+  alwaysReady: "مساعدك الذكي، دائماً جاهز",
+  suggWriteCode: "كتابة الكود",
+  suggWriteCodeDesc: "تصحيح، بناء، شرح",
+  suggDraft: "كتابة المحتوى",
+  suggDraftDesc: "رسائل، منشورات، وثائق",
+  suggResearch: "البحث",
+  suggResearchDesc: "اشرح أي شيء",
+  suggBrainstorm: "العصف الذهني",
+  suggBrainstormDesc: "أفكار واستراتيجيات",
+  modelFlashDesc: "إجابات سريعة جداً",
+  modelNovaDesc: "الأفضل لمعظم المهام",
+  modelOrionDesc: "تفكير عميق وتحليل",
 };
 
 const ru: Translations = {
@@ -231,6 +278,21 @@ const ru: Translations = {
   listening: "Слушаю…",
   speaking: "Говорю…",
   tapToSpeak: "Нажмите, чтобы говорить",
+  tataiSpeaking: "tatAI говорит",
+  saySmth: "Скажите что-нибудь tatAI",
+  howCanIHelp: "Чем могу помочь?",
+  alwaysReady: "Ваш умный ИИ-помощник, всегда готов",
+  suggWriteCode: "Написать код",
+  suggWriteCodeDesc: "Отладка, разработка, объяснение",
+  suggDraft: "Создать текст",
+  suggDraftDesc: "Письма, посты, документы",
+  suggResearch: "Исследование",
+  suggResearchDesc: "Объяснить что угодно",
+  suggBrainstorm: "Мозговой штурм",
+  suggBrainstormDesc: "Идеи и стратегия",
+  modelFlashDesc: "Молниеносные ответы",
+  modelNovaDesc: "Лучший для большинства задач",
+  modelOrionDesc: "Глубокое мышление и анализ",
 };
 
 const zh: Translations = {
@@ -287,6 +349,21 @@ const zh: Translations = {
   listening: "正在聆听…",
   speaking: "正在说话…",
   tapToSpeak: "点击说话",
+  tataiSpeaking: "tatAI 正在说话",
+  saySmth: "跟 tatAI 说点什么",
+  howCanIHelp: "我能帮你什么？",
+  alwaysReady: "您的智能AI助手，随时待命",
+  suggWriteCode: "编写代码",
+  suggWriteCodeDesc: "调试、构建、解释",
+  suggDraft: "撰写内容",
+  suggDraftDesc: "邮件、帖子、文档",
+  suggResearch: "研究",
+  suggResearchDesc: "解释任何事情",
+  suggBrainstorm: "头脑风暴",
+  suggBrainstormDesc: "创意与策略",
+  modelFlashDesc: "极速回答",
+  modelNovaDesc: "适合大多数任务",
+  modelOrionDesc: "深度推理与分析",
 };
 
 const es: Translations = {
@@ -343,6 +420,21 @@ const es: Translations = {
   listening: "Escuchando…",
   speaking: "Hablando…",
   tapToSpeak: "Toca para hablar",
+  tataiSpeaking: "tatAI está hablando",
+  saySmth: "Di algo a tatAI",
+  howCanIHelp: "¿En qué puedo ayudarte?",
+  alwaysReady: "Tu asistente inteligente, siempre listo",
+  suggWriteCode: "Escribir código",
+  suggWriteCodeDesc: "Depurar, construir, explicar",
+  suggDraft: "Redactar contenido",
+  suggDraftDesc: "Correos, posts, docs",
+  suggResearch: "Investigar",
+  suggResearchDesc: "Explica cualquier cosa",
+  suggBrainstorm: "Lluvia de ideas",
+  suggBrainstormDesc: "Ideas y estrategia",
+  modelFlashDesc: "Respuestas ultrarrápidas",
+  modelNovaDesc: "El mejor para la mayoría",
+  modelOrionDesc: "Razonamiento profundo y análisis",
 };
 
 const fr: Translations = {
@@ -399,6 +491,21 @@ const fr: Translations = {
   listening: "Écoute en cours…",
   speaking: "Parole en cours…",
   tapToSpeak: "Appuyez pour parler",
+  tataiSpeaking: "tatAI parle",
+  saySmth: "Dites quelque chose à tatAI",
+  howCanIHelp: "Comment puis-je vous aider ?",
+  alwaysReady: "Votre assistant IA intelligent, toujours prêt",
+  suggWriteCode: "Écrire du code",
+  suggWriteCodeDesc: "Déboguer, créer, expliquer",
+  suggDraft: "Rédiger du contenu",
+  suggDraftDesc: "E-mails, posts, docs",
+  suggResearch: "Rechercher",
+  suggResearchDesc: "Expliquer n'importe quoi",
+  suggBrainstorm: "Brainstorming",
+  suggBrainstormDesc: "Idées et stratégie",
+  modelFlashDesc: "Réponses ultra-rapides",
+  modelNovaDesc: "Idéal pour la plupart des tâches",
+  modelOrionDesc: "Raisonnement profond et analyse",
 };
 
 const de: Translations = {
@@ -455,6 +562,21 @@ const de: Translations = {
   listening: "Höre zu…",
   speaking: "Spreche…",
   tapToSpeak: "Tippen um zu sprechen",
+  tataiSpeaking: "tatAI spricht",
+  saySmth: "Sag tatAI etwas",
+  howCanIHelp: "Wie kann ich helfen?",
+  alwaysReady: "Ihr intelligenter KI-Assistent, immer bereit",
+  suggWriteCode: "Code schreiben",
+  suggWriteCodeDesc: "Debuggen, erstellen, erklären",
+  suggDraft: "Inhalte erstellen",
+  suggDraftDesc: "E-Mails, Posts, Dokumente",
+  suggResearch: "Recherchieren",
+  suggResearchDesc: "Alles erklären",
+  suggBrainstorm: "Brainstorming",
+  suggBrainstormDesc: "Ideen & Strategie",
+  modelFlashDesc: "Blitzschnelle Antworten",
+  modelNovaDesc: "Ideal für die meisten Aufgaben",
+  modelOrionDesc: "Tiefes Denken & Analyse",
 };
 
 const tr: Translations = {
@@ -511,6 +633,21 @@ const tr: Translations = {
   listening: "Dinleniyor…",
   speaking: "Konuşuluyor…",
   tapToSpeak: "Konuşmak için dokun",
+  tataiSpeaking: "tatAI konuşuyor",
+  saySmth: "tatAI'ya bir şey söyle",
+  howCanIHelp: "Size nasıl yardımcı olabilirim?",
+  alwaysReady: "Akıllı AI asistanınız, her zaman hazır",
+  suggWriteCode: "Kod yaz",
+  suggWriteCodeDesc: "Hata ayıkla, oluştur, açıkla",
+  suggDraft: "İçerik oluştur",
+  suggDraftDesc: "E-postalar, gönderiler, belgeler",
+  suggResearch: "Araştır",
+  suggResearchDesc: "Her şeyi açıkla",
+  suggBrainstorm: "Beyin fırtınası",
+  suggBrainstormDesc: "Fikirler ve strateji",
+  modelFlashDesc: "Yıldırım hızında yanıtlar",
+  modelNovaDesc: "Çoğu görev için en iyisi",
+  modelOrionDesc: "Derin akıl yürütme ve analiz",
 };
 
 const ky: Translations = {
@@ -567,6 +704,21 @@ const ky: Translations = {
   listening: "Угуп жатам…",
   speaking: "Сүйлөп жатам…",
   tapToSpeak: "Сүйлөө үчүн басыңыз",
+  tataiSpeaking: "tatAI сүйлөп жатат",
+  saySmth: "tatAI-га бир нерсе айтыңыз",
+  howCanIHelp: "Сизге кантип жардам бере алам?",
+  alwaysReady: "Акылдуу AI жардамчыңыз, ар дайым даяр",
+  suggWriteCode: "Код жазуу",
+  suggWriteCodeDesc: "Оңдоо, куруу, түшүндүрүү",
+  suggDraft: "Мазмун түзүү",
+  suggDraftDesc: "Каттар, посттор, документтер",
+  suggResearch: "Изилдөө",
+  suggResearchDesc: "Баарын түшүндүрүү",
+  suggBrainstorm: "Акыл чабуулу",
+  suggBrainstormDesc: "Идеялар жана стратегия",
+  modelFlashDesc: "Жылдырым ылдам жооптор",
+  modelNovaDesc: "Көпчүлүк тапшырмалар үчүн эң жакшы",
+  modelOrionDesc: "Терең ой жүгүртүү жана анализ",
 };
 
 const pt: Translations = {
@@ -623,6 +775,21 @@ const pt: Translations = {
   listening: "Ouvindo…",
   speaking: "Falando…",
   tapToSpeak: "Toque para falar",
+  tataiSpeaking: "tatAI está falando",
+  saySmth: "Diga algo para o tatAI",
+  howCanIHelp: "Como posso ajudar?",
+  alwaysReady: "Seu assistente IA inteligente, sempre pronto",
+  suggWriteCode: "Escrever código",
+  suggWriteCodeDesc: "Depurar, criar, explicar",
+  suggDraft: "Redigir conteúdo",
+  suggDraftDesc: "E-mails, posts, docs",
+  suggResearch: "Pesquisar",
+  suggResearchDesc: "Explicar qualquer coisa",
+  suggBrainstorm: "Brainstorming",
+  suggBrainstormDesc: "Ideias e estratégia",
+  modelFlashDesc: "Respostas ultra-rápidas",
+  modelNovaDesc: "Melhor para a maioria das tarefas",
+  modelOrionDesc: "Raciocínio profundo e análise",
 };
 
 // Map from language name (as stored in localStorage) to translation object

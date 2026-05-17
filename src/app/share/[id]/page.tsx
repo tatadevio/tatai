@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import { TataILogo } from "@/components/Logo";
 import { ArrowLeft, Copy, Check } from "lucide-react";
 
-interface Message { role: "user" | "assistant"; content: string; }
+interface Message { role: "user" | "assistant"; content: string; parts?: { type: string; text?: string }[]; }
 
 export default function SharePage() {
   const { id } = useParams<{ id: string }>();
@@ -74,7 +74,9 @@ export default function SharePage() {
 
       {/* Messages */}
       <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-8 space-y-6">
-        {messages.map((m, i) => (
+        {messages.map((m, i) => {
+          const text = m.content || m.parts?.filter(p => p.type === "text").map(p => p.text ?? "").join("") || "";
+          return (
           <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             {m.role === "assistant" && (
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6B4EFF] to-[#B060FF] flex items-center justify-center flex-shrink-0 mt-1">
@@ -86,13 +88,14 @@ export default function SharePage() {
               : "text-[14.5px] leading-[1.7] text-neutral-100"
             }`}>
               {m.role === "user" ? (
-                <p>{m.content}</p>
+                <p>{text}</p>
               ) : (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Footer CTA */}
