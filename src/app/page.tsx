@@ -318,6 +318,8 @@ export default function Home() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSpokenMsgIdRef = useRef<string | null>(null);
+  const listeningActiveRef = useRef(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -616,6 +618,15 @@ export default function Home() {
   }
 
   // ── Voice functions (Whisper + OpenAI TTS) ──
+
+  // Attach camera stream to <video> element when video mode mounts
+  useEffect(() => {
+    if (voiceActive && voiceIsVideo && micStreamRef.current && videoRef.current) {
+      videoRef.current.srcObject = micStreamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [voiceActive, voiceIsVideo]);
+
   async function startVoiceMode(withVideo = false) {
     setShowVoiceMenu(false);
     try {
@@ -624,19 +635,12 @@ export default function Home() {
         video: withVideo ? { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } : false,
       });
       micStreamRef.current = stream;
-      if (withVideo) {
-        // Attach video track to video element after state is set
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play().catch(() => {});
-          }
-        }, 100);
-      }
     } catch {
       alert(withVideo ? "Camera and microphone access are required for video calls." : "Microphone access is required for voice calls.");
       return;
     }
+    lastSpokenMsgIdRef.current = null;
+    listeningActiveRef.current = false;
     voiceActiveRef.current = true;
     voiceMutedRef.current = false;
     setVoiceSeconds(0);
@@ -644,13 +648,15 @@ export default function Home() {
     setVoiceActive(true);
     setVoiceMuted(false);
     voiceTimerRef.current = setInterval(() => setVoiceSeconds(s => s + 1), 1000);
-    startListeningWhisper();
+    setTimeout(startListeningWhisper, 300);
   }
 
   function startListeningWhisper() {
     if (!voiceActiveRef.current || voiceMutedRef.current || !micStreamRef.current) return;
+    if (listeningActiveRef.current) return; // already listening — prevent re-entry
+    listeningActiveRef.current = true;
 
-    // Set up AudioContext for silence detection
+    // AudioContext for silence detection
     const ctx = new AudioContext();
     audioContextRef.current = ctx;
     const source = ctx.createMediaStreamSource(micStreamRef.current);
@@ -659,7 +665,10 @@ export default function Home() {
     source.connect(analyser);
     analyserRef.current = analyser;
 
-    const recorder = new MediaRecorder(micStreamRef.current);
+    // Use audio-only stream — avoids sending video frames to Whisper (huge files)
+    const audioTracks = micStreamRef.current.getAudioTracks();
+    const audioStream = new MediaStream(audioTracks);
+    const recorder = new MediaRecorder(audioStream);
     mediaRecorderRef.current = recorder;
     audioChunksRef.current = [];
 
@@ -668,11 +677,11 @@ export default function Home() {
     };
 
     recorder.onstop = async () => {
+      listeningActiveRef.current = false;
       ctx.close().catch(() => {});
       if (!voiceActiveRef.current) return;
       const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       if (blob.size < 2000) {
-        // too short — just start listening again
         if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 300);
         return;
       }
@@ -683,25 +692,29 @@ export default function Home() {
     setVoiceListening(true);
     setVoiceTranscript("");
 
-    // Silence detection — stop after ~1.2s of silence
+    // Time-based silence detection (reliable regardless of frame rate)
     const data = new Uint8Array(analyser.frequencyBinCount);
-    let silentFrames = 0;
     let hasSpeech = false;
+    let silenceStart: number | null = null;
 
     function checkSilence() {
       if (!voiceActiveRef.current || recorder.state !== "recording") return;
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
-      if (avg > 10) hasSpeech = true;
-      if (avg < 8) {
-        silentFrames++;
-        if (silentFrames > (hasSpeech ? 28 : 80)) { // 1.2s after speech, 3s before
+      if (avg > 12) {
+        hasSpeech = true;
+        silenceStart = null;
+      } else if (avg < 8) {
+        if (silenceStart === null) silenceStart = Date.now();
+        const silentMs = Date.now() - silenceStart;
+        const threshold = hasSpeech ? 1800 : 4000; // 1.8s after speech, 4s before
+        if (silentMs > threshold) {
           recorder.stop();
           setVoiceListening(false);
           return;
         }
       } else {
-        silentFrames = 0;
+        silenceStart = null;
       }
       requestAnimationFrame(checkSilence);
     }
@@ -721,14 +734,14 @@ export default function Home() {
       }
       setVoiceTranscript(text.trim());
 
-      // Send to AI — force gpt-4o-mini for faster voice responses
+      // Send to AI
       const sessionId = activeSession ?? Date.now().toString();
       if (!activeSession) {
         setSessions(p => [{ id: sessionId, title: text.slice(0, 40) }, ...p]);
         setActiveSession(sessionId);
       }
       setInput(text.trim());
-      sendMessage({ text: text.trim(), model: "gpt-4o-mini" } as any);
+      sendMessage({ text: text.trim() });
       setInput("");
     } catch {
       if (voiceActiveRef.current && !voiceMutedRef.current) setTimeout(startListeningWhisper, 500);
@@ -785,10 +798,14 @@ export default function Home() {
 
   function stopVoiceMode() {
     voiceActiveRef.current = false;
+    listeningActiveRef.current = false;
+    lastSpokenMsgIdRef.current = null;
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    mediaRecorderRef.current = null;
     micStreamRef.current?.getTracks().forEach(t => t.stop());
     micStreamRef.current = null;
     audioContextRef.current?.close().catch(() => {});
+    audioContextRef.current = null;
     currentAudioRef.current?.pause();
     currentAudioRef.current = null;
     if (videoRef.current) { videoRef.current.srcObject = null; }
@@ -808,8 +825,17 @@ export default function Home() {
     if (!voiceActive || isLoading) return;
     const lastAI = [...messages].reverse().find(m => m.role === "assistant");
     if (!lastAI) return;
+    // Don't re-speak a message we've already spoken
+    if (lastAI.id === lastSpokenMsgIdRef.current) return;
     const text = lastAI.parts.filter(p => p.type === "text").map(p => p.type === "text" ? p.text : "").join("").slice(0, 600);
     if (!text) return;
+    lastSpokenMsgIdRef.current = lastAI.id;
+    // Stop mic before speaking (avoid recording our own TTS)
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    listeningActiveRef.current = false;
+    setVoiceListening(false);
     speakWithTTS(text);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isLoading]);
