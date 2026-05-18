@@ -58,21 +58,43 @@ export async function POST(req: NextRequest) {
   const uid = await getUserId(req);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id, title, messages, pinned } = await req.json();
+  const { id, title, messages, pinned, projectId } = await req.json();
   if (!id || !messages) return NextResponse.json({ error: "id and messages required" }, { status: 400 });
 
   const now = Date.now();
 
   // Save full messages
-  await getRedis().set(`conv:${uid}:${id}`, { id, title, messages, pinned, updatedAt: now }, { ex: TTL });
+  await getRedis().set(`conv:${uid}:${id}`, { id, title, messages, pinned, projectId, updatedAt: now }, { ex: TTL });
 
   // Save meta (for listing)
-  await getRedis().set(`conv-meta:${uid}:${id}`, { title, pinned, updatedAt: now, messageCount: messages.length }, { ex: TTL });
+  await getRedis().set(`conv-meta:${uid}:${id}`, { title, pinned, projectId, updatedAt: now, messageCount: messages.length }, { ex: TTL });
 
   // Add to index
   await getRedis().sadd(`conv-index:${uid}`, id);
   await getRedis().expire(`conv-index:${uid}`, TTL);
 
+  return NextResponse.json({ ok: true });
+}
+
+// PATCH — update metadata only (move to project, rename, pin)
+export async function PATCH(req: NextRequest) {
+  const uid = await getUserId(req);
+  if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id, projectId, pinned, title } = await req.json();
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const redis = getRedis();
+  const existing: any = await redis.get(`conv-meta:${uid}:${id}`);
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const updated = {
+    ...existing,
+    ...(projectId !== undefined ? { projectId } : {}),
+    ...(pinned !== undefined ? { pinned } : {}),
+    ...(title !== undefined ? { title } : {}),
+  };
+  await redis.set(`conv-meta:${uid}:${id}`, updated, { ex: TTL });
   return NextResponse.json({ ok: true });
 }
 

@@ -12,6 +12,7 @@ import {
   Zap as ZapIcon, Mic, MicOff, Volume2, Video, VideoOff, PhoneOff,
   ThumbsUp, ThumbsDown, RefreshCw, Share2,
   MoreHorizontal, Pin, Pencil, Trash2, Link,
+  FolderPlus, Folder, ChevronRight,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -69,7 +70,11 @@ const BOTTOM_LINK_DEFS = [
   { icon: FileTerminal, key: "terms" as const, href: "/terms" },
 ];
 
-interface Session { id: string; title: string; pinned?: boolean; }
+interface Session { id: string; title: string; pinned?: boolean; projectId?: string; }
+interface Project { id: string; name: string; icon: string; }
+
+const PROJECT_ICONS = ["📁","💼","📚","✍️","🏥","✈️","💰","🎯","🛠️","🎨","🔬","🎵"];
+
 
 
 // Maps MIME type (and optional filename) → { label, color, bg, icon }
@@ -291,6 +296,14 @@ export default function Home() {
   const dragCounterRef = useRef(0);
   const convSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Projects ──
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectIcon, setNewProjectIcon] = useState("📁");
+  const [moveMenu, setMoveMenu] = useState<{ sessionId: string; x: number; y: number } | null>(null);
+
   // ── Voice ──
   const [voiceActive, setVoiceActive] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
@@ -379,7 +392,7 @@ export default function Home() {
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
-            setSessions(data.map((s: any) => ({ id: s.id, title: s.title ?? "Chat", pinned: s.pinned })));
+            setSessions(data.map((s: any) => ({ id: s.id, title: s.title ?? "Chat", pinned: s.pinned, projectId: s.projectId })));
           } else if (storageKey) {
             // Fallback: migrate from localStorage
             const saved = localStorage.getItem(storageKey);
@@ -399,6 +412,17 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
+  // Load projects
+  useEffect(() => {
+    if (!user) { setProjects([]); return; }
+    user.getIdToken().then(token =>
+      fetch("/api/projects", { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setProjects(data); })
+        .catch(() => {})
+    ).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   // If selected model is Pro-only but user isn't Pro, fall back to Nova
   const effectiveModel = (TATAI_MODELS.find(m => m.id === selectedModel)?.proOnly && !isPro)
@@ -450,11 +474,11 @@ export default function Home() {
     convSaveTimer.current = setTimeout(async () => {
       try {
         const token = await user.getIdToken();
-        const title = sessions.find(s => s.id === activeSession)?.title ?? "Chat";
+        const sess = sessions.find(s => s.id === activeSession);
         await fetch("/api/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ id: activeSession, title, messages }),
+          body: JSON.stringify({ id: activeSession, title: sess?.title ?? "Chat", messages, projectId: sess?.projectId }),
         });
       } catch {}
     }, 1500);
@@ -1052,6 +1076,44 @@ export default function Home() {
     }
   }
 
+  async function createProject() {
+    if (!newProjectName.trim() || !user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newProjectName.trim(), icon: newProjectIcon }),
+      });
+      const project = await res.json();
+      setProjects(p => [...p, project]);
+    } catch {}
+    setShowNewProject(false);
+    setNewProjectName("");
+    setNewProjectIcon("📁");
+  }
+
+  async function deleteProject(id: string) {
+    setProjects(p => p.filter(x => x.id !== id));
+    if (activeProject === id) setActiveProject(null);
+    if (!user) return;
+    const token = await user.getIdToken();
+    fetch(`/api/projects?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+  }
+
+  async function moveSessionToProject(sessionId: string, projectId: string | null) {
+    setSessions(p => p.map(s => s.id === sessionId ? { ...s, projectId: projectId ?? undefined } : s));
+    setCtxMenu(null);
+    setMoveMenu(null);
+    if (!user) return;
+    const token = await user.getIdToken();
+    fetch("/api/conversations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id: sessionId, projectId }),
+    }).catch(() => {});
+  }
+
   function closeSidebarOnMobile() {
     if (isMobile) setSidebarOpen(false);
   }
@@ -1085,20 +1147,80 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Chat history */}
-        <div className="flex-1 overflow-y-auto px-2 py-1" onClick={() => setCtxMenu(null)}>
-          {sessions.filter(s => s.pinned).length > 0 && (
-            <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-2 pb-1">Pinned</p>
+        {/* Chat history + Projects */}
+        <div className="flex-1 overflow-y-auto px-2 py-1" onClick={() => { setCtxMenu(null); setMoveMenu(null); }}>
+
+          {/* Projects section — only for logged-in users */}
+          {user && (
+            <>
+              <div className="flex items-center justify-between px-2 pt-2 pb-1">
+                <span className="text-[11px] font-medium text-neutral-400 dark:text-white/25">Projects</span>
+                <button
+                  onClick={e => { e.stopPropagation(); setShowNewProject(true); }}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/30"
+                  title="New project"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={e => { e.stopPropagation(); setActiveProject(activeProject === p.id ? null : p.id); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors text-left group ${
+                    activeProject === p.id
+                      ? "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                      : "text-neutral-600 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white/80"
+                  }`}
+                >
+                  <span className="text-base leading-none">{p.icon}</span>
+                  <span className="flex-1 truncate font-medium">{p.name}</span>
+                  <span className="text-[10px] opacity-50 tabular-nums">{sessions.filter(s => s.projectId === p.id).length}</span>
+                </button>
+              ))}
+              {projects.length === 0 && (
+                <button
+                  onClick={e => { e.stopPropagation(); setShowNewProject(true); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-neutral-400 dark:text-white/20 hover:text-neutral-600 dark:hover:text-white/40 transition-colors"
+                >
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  New project
+                </button>
+              )}
+              <div className="mx-2 my-2 h-px bg-neutral-200 dark:bg-white/[0.05]" />
+            </>
           )}
-          {sessions.filter(s => s.pinned).map((s) => (
-            <SessionRow key={s.id} s={s} activeSession={activeSession} renamingId={renamingId} renameValue={renameValue} setRenameValue={setRenameValue} commitRename={commitRename} loadSession={loadSession} closeSidebarOnMobile={closeSidebarOnMobile} setCtxMenu={setCtxMenu} />
-          ))}
-          {sessions.filter(s => !s.pinned).length > 0 && (
-            <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-2 pb-1">Today</p>
-          )}
-          {sessions.filter(s => !s.pinned).map((s) => (
-            <SessionRow key={s.id} s={s} activeSession={activeSession} renamingId={renamingId} renameValue={renameValue} setRenameValue={setRenameValue} commitRename={commitRename} loadSession={loadSession} closeSidebarOnMobile={closeSidebarOnMobile} setCtxMenu={setCtxMenu} />
-          ))}
+
+          {/* Sessions — filtered by activeProject if one is selected */}
+          {(() => {
+            const filtered = activeProject
+              ? sessions.filter(s => s.projectId === activeProject)
+              : sessions;
+            const pinned = filtered.filter(s => s.pinned);
+            const unpinned = filtered.filter(s => !s.pinned);
+            return (
+              <>
+                {activeProject && (
+                  <div className="flex items-center gap-1.5 px-2 pb-1">
+                    <button onClick={() => setActiveProject(null)} className="text-[11px] text-blue-500 hover:underline">← All Chats</button>
+                    <span className="text-[11px] text-neutral-400 dark:text-white/25">/ {projects.find(p => p.id === activeProject)?.name}</span>
+                  </div>
+                )}
+                {!activeProject && (
+                  <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pb-1">All Chats</p>
+                )}
+                {pinned.length > 0 && (
+                  <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-1 pb-1">Pinned</p>
+                )}
+                {pinned.map(s => (
+                  <SessionRow key={s.id} s={s} activeSession={activeSession} renamingId={renamingId} renameValue={renameValue} setRenameValue={setRenameValue} commitRename={commitRename} loadSession={loadSession} closeSidebarOnMobile={closeSidebarOnMobile} setCtxMenu={setCtxMenu} />
+                ))}
+                {unpinned.map(s => (
+                  <SessionRow key={s.id} s={s} activeSession={activeSession} renamingId={renamingId} renameValue={renameValue} setRenameValue={setRenameValue} commitRename={commitRename} loadSession={loadSession} closeSidebarOnMobile={closeSidebarOnMobile} setCtxMenu={setCtxMenu} />
+                ))}
+              </>
+            );
+          })()}
         </div>
 
         {/* Context menu */}
@@ -1120,9 +1242,64 @@ export default function Home() {
               <button onClick={() => pinSession(s.id)} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors">
                 <Pin className="w-3.5 h-3.5" /> {s.pinned ? "Unpin" : "Pin"}
               </button>
+              {user && (
+                <button
+                  onClick={e => { e.stopPropagation(); setMoveMenu({ sessionId: s.id, x: ctxMenu.x + 176, y: ctxMenu.y }); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors"
+                >
+                  <Folder className="w-3.5 h-3.5" />
+                  <span className="flex-1">Move to Project</span>
+                  <ChevronRight className="w-3 h-3 opacity-40" />
+                </button>
+              )}
               <div className="my-1 mx-2 h-px bg-neutral-200 dark:bg-white/[0.06]" />
               <button onClick={(e) => { deleteSession(s.id, e); setCtxMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Move to Project submenu */}
+        {moveMenu && (() => {
+          const s = sessions.find(x => x.id === moveMenu.sessionId);
+          if (!s) return null;
+          // Clamp x so it doesn't go off-screen
+          const x = Math.min(moveMenu.x, window.innerWidth - 192);
+          return (
+            <div
+              className="fixed z-[201] bg-white dark:bg-[#232323] border border-neutral-200 dark:border-white/[0.08] rounded-xl shadow-xl py-1 w-48"
+              style={{ top: moveMenu.y, left: x }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-3 py-1.5">Move to</p>
+              {s.projectId && (
+                <button
+                  onClick={() => moveSessionToProject(s.id, null)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors"
+                >
+                  <span className="text-base">📤</span> Remove from project
+                </button>
+              )}
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => moveSessionToProject(s.id, p.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors ${
+                    s.projectId === p.id ? "text-blue-600 dark:text-blue-400 font-medium" : "text-neutral-700 dark:text-white/70"
+                  }`}
+                >
+                  <span className="text-base">{p.icon}</span>
+                  <span className="flex-1 truncate">{p.name}</span>
+                  {s.projectId === p.id && <Check className="w-3 h-3" />}
+                </button>
+              ))}
+              <div className="my-1 mx-2 h-px bg-neutral-200 dark:bg-white/[0.06]" />
+              <button
+                onClick={() => { setMoveMenu(null); setCtxMenu(null); setShowNewProject(true); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+              >
+                <FolderPlus className="w-3.5 h-3.5" /> New project
               </button>
             </div>
           );
@@ -1843,6 +2020,64 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* ── New Project Modal ── */}
+      {showNewProject && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowNewProject(false)}>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl p-6 w-[340px] border border-neutral-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-neutral-900 dark:text-white">New Project</h2>
+              <button onClick={() => setShowNewProject(false)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-neutral-100 dark:hover:bg-white/[0.08] transition-colors text-neutral-400">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Icon + Name row */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="text-2xl w-10 h-10 flex items-center justify-center bg-neutral-100 dark:bg-white/[0.06] rounded-xl">{newProjectIcon}</div>
+              <input
+                autoFocus
+                value={newProjectName}
+                onChange={e => setNewProjectName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") createProject(); }}
+                placeholder="Project name"
+                className="flex-1 bg-neutral-100 dark:bg-white/[0.06] border border-transparent focus:border-blue-500 rounded-xl px-3 py-2.5 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-white/30 outline-none transition-colors"
+              />
+            </div>
+
+            {/* Icon picker */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {PROJECT_ICONS.map(icon => (
+                <button
+                  key={icon}
+                  onClick={() => setNewProjectIcon(icon)}
+                  className={`w-9 h-9 flex items-center justify-center text-xl rounded-xl transition-all ${
+                    newProjectIcon === icon
+                      ? "bg-blue-100 dark:bg-blue-500/20 ring-2 ring-blue-500"
+                      : "bg-neutral-100 dark:bg-white/[0.06] hover:bg-neutral-200 dark:hover:bg-white/[0.10]"
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <button onClick={() => setShowNewProject(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-neutral-600 dark:text-white/60 bg-neutral-100 dark:bg-white/[0.06] hover:bg-neutral-200 dark:hover:bg-white/[0.10] transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={createProject}
+                disabled={!newProjectName.trim()}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
