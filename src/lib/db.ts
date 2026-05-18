@@ -15,7 +15,7 @@ export interface UserRecord {
   paypal_order_id?: string;
 }
 
-export const FREE_LIMIT = 50;
+export const FREE_LIMIT = 10;
 
 export async function upsertUser(clerkId: string, email: string, name: string) {
   const db = getSupabaseAdmin();
@@ -47,12 +47,9 @@ export async function incrementMessageCount(clerkId: string): Promise<{ allowed:
   const user = await getUser(clerkId);
   if (!user) return { allowed: false, remaining: 0 };
 
-  const today = new Date().toISOString().split("T")[0];
-  const lastReset = user.last_reset?.split("T")[0];
-  const needsReset = lastReset !== today;
-  const currentCount = needsReset ? 0 : (user.messages_today ?? 0);
+  const totalCount = user.messages_total ?? 0;
 
-  if (user.plan === "free" && currentCount >= FREE_LIMIT) {
+  if (user.plan === "free" && totalCount >= FREE_LIMIT) {
     return { allowed: false, remaining: 0 };
   }
 
@@ -60,13 +57,12 @@ export async function incrementMessageCount(clerkId: string): Promise<{ allowed:
   await db
     .from("users")
     .update({
-      messages_today: currentCount + 1,
-      messages_total: (user.messages_total ?? 0) + 1,
-      last_reset: needsReset ? new Date().toISOString() : user.last_reset,
+      messages_total: totalCount + 1,
+      messages_today: (user.messages_today ?? 0) + 1,
     })
     .eq("clerk_id", clerkId);
 
-  const remaining = user.plan === "pro" ? 9999 : FREE_LIMIT - currentCount - 1;
+  const remaining = user.plan === "pro" ? 9999 : FREE_LIMIT - totalCount - 1;
   return { allowed: true, remaining };
 }
 

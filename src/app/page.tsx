@@ -296,6 +296,9 @@ export default function Home() {
   const dragCounterRef = useRef(0);
   const convSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Message limits ──
+  const [showLimitModal, setShowLimitModal] = useState<"login" | "upgrade" | null>(null);
+
   // ── Projects ──
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<string | null>(null);
@@ -337,6 +340,7 @@ export default function Home() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastSpokenMsgIdRef = useRef<string | null>(null);
   const listeningActiveRef = useRef(false);
+  const authTokenRef = useRef<string>("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -412,6 +416,18 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
+  // Keep Firebase auth token fresh in ref (for chat transport headers)
+  useEffect(() => {
+    if (!user) { authTokenRef.current = ""; return; }
+    // Clear guest count when user logs in (guest msgs don't count toward free quota)
+    localStorage.removeItem("tatai_guest_msgs");
+    user.getIdToken().then(t => { authTokenRef.current = t; });
+    const interval = setInterval(() => {
+      user.getIdToken(true).then(t => { authTokenRef.current = t; }).catch(() => {});
+    }, 45 * 60 * 1000); // refresh every 45 min (tokens last 1h)
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Load projects
   useEffect(() => {
     if (!user) { setProjects([]); return; }
@@ -458,6 +474,7 @@ export default function Home() {
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
+      headers: authTokenRef.current ? { Authorization: `Bearer ${authTokenRef.current}` } : {},
       body: {
         model: activeModelDef.apiModel,
         language: chatLanguage,
@@ -766,6 +783,12 @@ export default function Home() {
       }
       setVoiceTranscript(text.trim());
 
+      // Check message limit before sending
+      if (!checkMsgLimit()) {
+        stopVoiceMode();
+        return;
+      }
+
       // Send to AI
       const sessionId = activeSession ?? Date.now().toString();
       if (!activeSession) {
@@ -872,8 +895,24 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isLoading]);
 
+  // Returns true if allowed to send, false if limit hit (shows modal)
+  function checkMsgLimit(): boolean {
+    if (!user) {
+      const count = parseInt(localStorage.getItem("tatai_guest_msgs") ?? "0");
+      if (count >= 4) { setShowLimitModal("login"); return false; }
+      localStorage.setItem("tatai_guest_msgs", String(count + 1));
+    } else if (!isPro) {
+      const key = `tatai_free_msgs_${user.uid}`;
+      const count = parseInt(localStorage.getItem(key) ?? "0");
+      if (count >= 10) { setShowLimitModal("upgrade"); return false; }
+      localStorage.setItem(key, String(count + 1));
+    }
+    return true;
+  }
+
   function handleSend() {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
+    if (!checkMsgLimit()) return;
 
     const text = input.trim();
     const titleText = text || (attachments[0]?.name ?? "File upload");
@@ -1845,7 +1884,11 @@ export default function Home() {
               </div>
             </div>
             <p className="text-center text-neutral-400 dark:text-neutral-500/60 text-[11px] mt-2 tracking-wide">
-              {t.disclaimer}
+              {!user
+                ? (() => { const n = 4 - parseInt(localStorage.getItem("tatai_guest_msgs") ?? "0"); return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — sign in for more` : t.disclaimer; })()
+                : !isPro
+                ? (() => { const n = 10 - parseInt(localStorage.getItem(`tatai_free_msgs_${user.uid}`) ?? "0"); return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — upgrade for unlimited` : "Upgrade to Pro for unlimited messages"; })()
+                : t.disclaimer}
             </p>
           </div>
         </div>
@@ -2020,6 +2063,68 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* ── Guest limit modal: must log in ── */}
+      {showLimitModal === "login" && (
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowLimitModal(null)}>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 w-full sm:w-[380px] border-t sm:border border-neutral-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-col items-center text-center gap-2 mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-1">
+                <LogIn className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">You've reached the free limit</h2>
+              <p className="text-sm text-neutral-500 dark:text-white/50 leading-relaxed">Sign in to get <span className="font-semibold text-neutral-700 dark:text-white/80">10 free messages</span>. Upgrade to Pro for unlimited access.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { setShowLimitModal(null); setShowLogin(true); }}
+                className="w-full py-3 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+              >
+                Sign in — it's free
+              </button>
+              <button
+                onClick={() => setShowLimitModal(null)}
+                className="w-full py-3 rounded-xl text-sm font-medium text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Free user limit modal: must upgrade ── */}
+      {showLimitModal === "upgrade" && (
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowLimitModal(null)}>
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 w-full sm:w-[380px] border-t sm:border border-neutral-200 dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-col items-center text-center gap-2 mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-1">
+                <Crown className="w-7 h-7 text-violet-600 dark:text-violet-400" />
+              </div>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">You've used all 10 free messages</h2>
+              <p className="text-sm text-neutral-500 dark:text-white/50 leading-relaxed">Upgrade to <span className="font-semibold text-violet-600 dark:text-violet-400">tatAI Pro</span> for unlimited messages, priority access, and all models.</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-2xl font-bold text-neutral-900 dark:text-white">$9.99</span>
+                <span className="text-sm text-neutral-400">/month</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { setShowLimitModal(null); router.push("/upgrade"); }}
+                className="w-full py-3 rounded-xl text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 transition-colors"
+              >
+                Upgrade to Pro
+              </button>
+              <button
+                onClick={() => setShowLimitModal(null)}
+                className="w-full py-3 rounded-xl text-sm font-medium text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
+              >
+                Not now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── New Project Modal ── */}
       {showNewProject && (

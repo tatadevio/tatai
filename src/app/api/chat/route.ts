@@ -56,29 +56,31 @@ export async function POST(req: Request) {
   const firebaseConfigured = !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const supabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
+  // Auth + rate-limit enforcement (when Firebase + Supabase are both configured)
   if (firebaseConfigured && supabaseConfigured) {
-    try {
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader?.startsWith("Bearer ")) {
-        return Response.json({ error: "Please sign in to use tatAI." }, { status: 401 });
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      // Authenticated user — check plan + message count
+      try {
+        const idToken = authHeader.slice(7);
+        const { getAuth } = await import("firebase-admin/auth");
+        const { initializeAdminApp } = await import("@/lib/firebase-admin");
+        initializeAdminApp();
+        const decoded = await getAuth().verifyIdToken(idToken);
+        const uid = decoded.uid;
+        const email = decoded.email ?? "";
+        const name = decoded.name ?? email;
+        const { upsertUser, incrementMessageCount } = await import("@/lib/db");
+        await upsertUser(uid, email, name);
+        const { allowed } = await incrementMessageCount(uid);
+        if (!allowed) {
+          return Response.json({ error: "upgrade_required", code: "free_limit_reached" }, { status: 429 });
+        }
+      } catch (e) {
+        console.error("Auth/DB check failed, allowing request:", e);
       }
-      const idToken = authHeader.slice(7);
-      const { getAuth } = await import("firebase-admin/auth");
-      const { initializeAdminApp } = await import("@/lib/firebase-admin");
-      initializeAdminApp();
-      const decoded = await getAuth().verifyIdToken(idToken);
-      const uid = decoded.uid;
-      const email = decoded.email ?? "";
-      const name = decoded.name ?? email;
-      const { upsertUser, incrementMessageCount } = await import("@/lib/db");
-      await upsertUser(uid, email, name);
-      const { allowed } = await incrementMessageCount(uid);
-      if (!allowed) {
-        return Response.json({ error: "Daily limit reached. Upgrade to Pro for unlimited messages." }, { status: 429 });
-      }
-    } catch (e) {
-      console.error("Auth/DB check failed, allowing request:", e);
     }
+    // Guests (no auth header): allowed — client enforces 4-message limit
   }
 
   // ── URL fetching: detect URLs in the latest user message and fetch their content ──
