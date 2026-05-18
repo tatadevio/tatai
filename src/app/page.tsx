@@ -1884,11 +1884,18 @@ export default function Home() {
               </div>
             </div>
             <p className="text-center text-neutral-400 dark:text-neutral-500/60 text-[11px] mt-2 tracking-wide">
-              {!user
-                ? (() => { const n = 4 - parseInt(localStorage.getItem("tatai_guest_msgs") ?? "0"); return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — sign in for more` : t.disclaimer; })()
-                : !isPro
-                ? (() => { const n = 10 - parseInt(localStorage.getItem(`tatai_free_msgs_${user.uid}`) ?? "0"); return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — upgrade for unlimited` : "Upgrade to Pro for unlimited messages"; })()
-                : t.disclaimer}
+              {(() => {
+                if (typeof window === "undefined") return t.disclaimer;
+                if (!user) {
+                  const n = 4 - parseInt(localStorage.getItem("tatai_guest_msgs") ?? "0");
+                  return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — sign in for more` : t.disclaimer;
+                }
+                if (!isPro) {
+                  const n = 10 - parseInt(localStorage.getItem(`tatai_free_msgs_${user.uid}`) ?? "0");
+                  return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — upgrade for unlimited` : "Upgrade to Pro for unlimited messages";
+                }
+                return t.disclaimer;
+              })()}
             </p>
           </div>
         </div>
