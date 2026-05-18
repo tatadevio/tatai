@@ -306,6 +306,10 @@ export default function Home() {
   const inlineRecorderRef = useRef<MediaRecorder | null>(null);
   const inlineChunksRef = useRef<Blob[]>([]);
   const inlineStreamRef = useRef<MediaStream | null>(null);
+  // Capture chat ID from URL at mount time — before the URL sync effect clears it
+  const initialChatIdRef = useRef(
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("chat") : null
+  );
   const voiceMenuRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -344,14 +348,17 @@ export default function Home() {
   // Storage key scoped to logged-in user (or empty string for guests)
   const storageKey = user ? `tatai_sessions_${user.uid}` : null;
 
-  // Sync URL bar with active session
+  // Sync URL bar with active session (never clear on initial null — let session load handle it)
+  const sessionLoadedRef = useRef(false);
   useEffect(() => {
     if (activeSession) {
+      sessionLoadedRef.current = true;
       const url = `/?chat=${activeSession}`;
       if (window.location.pathname + window.location.search !== url) {
         window.history.replaceState(null, "", url);
       }
-    } else {
+    } else if (sessionLoadedRef.current) {
+      // Only clear URL after we've actually navigated away from a session
       if (window.location.search) window.history.replaceState(null, "", "/");
     }
   }, [activeSession]);
@@ -363,7 +370,8 @@ export default function Home() {
     setMessages([]);
     if (!user) return;
 
-    const urlChatId = new URLSearchParams(window.location.search).get("chat");
+    // Use ref captured at mount — window.location.search may already be cleared by URL sync effect
+    const urlChatId = initialChatIdRef.current;
 
     // Try Redis first (cloud history)
     user.getIdToken().then(token =>
