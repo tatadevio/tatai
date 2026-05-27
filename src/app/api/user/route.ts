@@ -20,12 +20,20 @@ export async function GET(req: Request) {
   return Response.json(user);
 }
 
+function detectPlatform(req: Request): "android" | "ios" | "web" {
+  const ua = req.headers.get("user-agent") ?? "";
+  if (/android/i.test(ua)) return "android";
+  if (/iphone|ipad|ipod/i.test(ua)) return "ios";
+  return "web";
+}
+
 export async function POST(req: Request) {
   const uid = await getFirebaseUid(req);
   if (!uid) return new Response("Unauthorized", { status: 401 });
 
   const { email, name } = await req.json();
-  await upsertUser(uid, email ?? "", name ?? "");
+  const platform = detectPlatform(req);
+  await upsertUser(uid, email ?? "", name ?? "", platform);
   const user = await getUser(uid);
   return Response.json(user);
 }

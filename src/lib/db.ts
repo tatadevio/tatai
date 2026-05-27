@@ -8,6 +8,7 @@ export interface UserRecord {
   email: string;
   name: string;
   plan: Plan;
+  platform?: "web" | "android" | "ios";
   messages_today: number;
   messages_total: number;
   last_reset: string;
@@ -18,14 +19,13 @@ export interface UserRecord {
 export const FREE_LIMIT = 10;
 const WINDOW_MS = 5 * 60 * 60 * 1000; // 5-hour rolling window
 
-export async function upsertUser(clerkId: string, email: string, name: string) {
+export async function upsertUser(clerkId: string, email: string, name: string, platform?: string) {
   const db = getSupabaseAdmin();
+  const payload: Record<string, unknown> = { clerk_id: clerkId, email, name, plan: "free", messages_today: 0, messages_total: 0 };
+  if (platform) payload.platform = platform;
   const { data, error } = await db
     .from("users")
-    .upsert(
-      { clerk_id: clerkId, email, name, plan: "free", messages_today: 0, messages_total: 0 },
-      { onConflict: "clerk_id", ignoreDuplicates: true }
-    )
+    .upsert(payload, { onConflict: "clerk_id", ignoreDuplicates: true })
     .select()
     .single();
   if (error && error.code !== "23505") console.error("upsertUser error:", error);
