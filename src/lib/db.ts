@@ -16,6 +16,7 @@ export interface UserRecord {
 }
 
 export const FREE_LIMIT = 10;
+const WINDOW_MS = 5 * 60 * 60 * 1000; // 5-hour rolling window
 
 export async function upsertUser(clerkId: string, email: string, name: string) {
   const db = getSupabaseAdmin();
@@ -43,27 +44,35 @@ export async function getAllUsers(): Promise<UserRecord[]> {
   return (data as UserRecord[]) ?? [];
 }
 
-export async function incrementMessageCount(clerkId: string): Promise<{ allowed: boolean; remaining: number }> {
+export async function incrementMessageCount(clerkId: string): Promise<{ allowed: boolean; remaining: number; resetAt?: number }> {
   const user = await getUser(clerkId);
   if (!user) return { allowed: false, remaining: 0 };
 
-  const totalCount = user.messages_total ?? 0;
+  if (user.plan === "pro") {
+    const db = getSupabaseAdmin();
+    await db.from("users").update({ messages_total: (user.messages_total ?? 0) + 1 }).eq("clerk_id", clerkId);
+    return { allowed: true, remaining: 9999 };
+  }
 
-  if (user.plan === "free" && totalCount >= FREE_LIMIT) {
-    return { allowed: false, remaining: 0 };
+  // 5-hour rolling window for free users
+  const now = Date.now();
+  const lastReset = user.last_reset ? new Date(user.last_reset).getTime() : 0;
+  const windowExpired = (now - lastReset) >= WINDOW_MS;
+  const windowCount = windowExpired ? 0 : (user.messages_today ?? 0);
+
+  if (windowCount >= FREE_LIMIT) {
+    return { allowed: false, remaining: 0, resetAt: lastReset + WINDOW_MS };
   }
 
   const db = getSupabaseAdmin();
-  await db
-    .from("users")
-    .update({
-      messages_total: totalCount + 1,
-      messages_today: (user.messages_today ?? 0) + 1,
-    })
-    .eq("clerk_id", clerkId);
+  const updates: Record<string, unknown> = {
+    messages_total: (user.messages_total ?? 0) + 1,
+    messages_today: windowCount + 1,
+  };
+  if (windowExpired) updates.last_reset = new Date().toISOString();
+  await db.from("users").update(updates).eq("clerk_id", clerkId);
 
-  const remaining = user.plan === "pro" ? 9999 : FREE_LIMIT - totalCount - 1;
-  return { allowed: true, remaining };
+  return { allowed: true, remaining: FREE_LIMIT - windowCount - 1 };
 }
 
 export async function upgradeToPro(clerkId: string, paypalOrderId: string) {

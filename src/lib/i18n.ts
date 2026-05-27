@@ -80,6 +80,48 @@ export interface Translations {
   modelFlashDesc: string;
   modelNovaDesc: string;
   modelOrionDesc: string;
+  // Sidebar / Projects
+  projects: string;
+  allChats: string;
+  pinned: string;
+  newProject: string;
+  moveToProject: string;
+  removeFromProject: string;
+  moveTo: string;
+  backToChats: string;
+  // Context menu
+  shareLink: string;
+  rename: string;
+  pin: string;
+  unpin: string;
+  delete: string;
+  // Extra suggestions
+  suggFixBug: string;
+  suggFixBugDesc: string;
+  suggWriteEmail: string;
+  suggWriteEmailDesc: string;
+  suggSummarize: string;
+  suggSummarizeDesc: string;
+  suggPlanWeek: string;
+  suggPlanWeekDesc: string;
+  suggLearnConcept: string;
+  suggLearnConceptDesc: string;
+  suggWriteBio: string;
+  suggWriteBioDesc: string;
+  suggCompare: string;
+  suggCompareDesc: string;
+  suggGenerateIdeas: string;
+  suggGenerateIdeasDesc: string;
+  // About page
+  aboutSubtitle: string;
+  aboutPoweredByAI: string;
+  aboutPoweredByAIDesc: string;
+  aboutFast: string;
+  aboutFastDesc: string;
+  aboutPrivate: string;
+  aboutPrivateDesc: string;
+  aboutAvailable: string;
+  aboutAvailableDesc: string;
 }
 
 const en: Translations = {
@@ -151,6 +193,44 @@ const en: Translations = {
   modelFlashDesc: "Lightning fast answers",
   modelNovaDesc: "Best for most tasks",
   modelOrionDesc: "Deep reasoning & analysis",
+  projects: "Projects",
+  allChats: "All Chats",
+  pinned: "Pinned",
+  newProject: "New project",
+  moveToProject: "Move to Project",
+  removeFromProject: "Remove from project",
+  moveTo: "Move to",
+  backToChats: "← All Chats",
+  shareLink: "Share link",
+  rename: "Rename",
+  pin: "Pin",
+  unpin: "Unpin",
+  delete: "Delete",
+  suggFixBug: "Fix a bug",
+  suggFixBugDesc: "Paste code, get fix",
+  suggWriteEmail: "Write an email",
+  suggWriteEmailDesc: "Clear & professional",
+  suggSummarize: "Summarize text",
+  suggSummarizeDesc: "TL;DR anything",
+  suggPlanWeek: "Plan my week",
+  suggPlanWeekDesc: "Productive schedule",
+  suggLearnConcept: "Learn a concept",
+  suggLearnConceptDesc: "Simple explanations",
+  suggWriteBio: "Write a bio",
+  suggWriteBioDesc: "About me & LinkedIn",
+  suggCompare: "Compare options",
+  suggCompareDesc: "Pros & cons",
+  suggGenerateIdeas: "Generate ideas",
+  suggGenerateIdeasDesc: "Creative thinking",
+  aboutSubtitle: "Your personal AI assistant, built to make you more productive, creative, and informed.",
+  aboutPoweredByAI: "Powered by AI",
+  aboutPoweredByAIDesc: "State-of-the-art language models for smart, accurate responses.",
+  aboutFast: "Fast & Reliable",
+  aboutFastDesc: "Streaming responses so you see answers as they're generated.",
+  aboutPrivate: "Private & Secure",
+  aboutPrivateDesc: "Your conversations are encrypted and never sold to third parties.",
+  aboutAvailable: "Always Available",
+  aboutAvailableDesc: "Access tatAI from any device, anywhere, anytime.",
 };
 
 const ar: Translations = {
@@ -222,6 +302,44 @@ const ar: Translations = {
   modelFlashDesc: "إجابات سريعة جداً",
   modelNovaDesc: "الأفضل لمعظم المهام",
   modelOrionDesc: "تفكير عميق وتحليل",
+  projects: "المشاريع",
+  allChats: "جميع المحادثات",
+  pinned: "المثبتة",
+  newProject: "مشروع جديد",
+  moveToProject: "نقل إلى مشروع",
+  removeFromProject: "إزالة من المشروع",
+  moveTo: "نقل إلى",
+  backToChats: "جميع المحادثات →",
+  shareLink: "مشاركة الرابط",
+  rename: "إعادة تسمية",
+  pin: "تثبيت",
+  unpin: "إلغاء التثبيت",
+  delete: "حذف",
+  suggFixBug: "إصلاح خطأ",
+  suggFixBugDesc: "الصق الكود، احصل على الحل",
+  suggWriteEmail: "كتابة بريد إلكتروني",
+  suggWriteEmailDesc: "واضح واحترافي",
+  suggSummarize: "تلخيص النص",
+  suggSummarizeDesc: "ملخص سريع لأي شيء",
+  suggPlanWeek: "تخطيط أسبوعي",
+  suggPlanWeekDesc: "جدول منتج",
+  suggLearnConcept: "تعلم مفهوماً",
+  suggLearnConceptDesc: "شرح بسيط",
+  suggWriteBio: "كتابة سيرة ذاتية",
+  suggWriteBioDesc: "عني وLinkedIn",
+  suggCompare: "مقارنة الخيارات",
+  suggCompareDesc: "مزايا وعيوب",
+  suggGenerateIdeas: "توليد أفكار",
+  suggGenerateIdeasDesc: "تفكير إبداعي",
+  aboutSubtitle: "مساعدك الشخصي بالذكاء الاصطناعي، مصمم لجعلك أكثر إنتاجية وإبداعاً ومعرفة.",
+  aboutPoweredByAI: "مدعوم بالذكاء الاصطناعي",
+  aboutPoweredByAIDesc: "نماذج لغوية متطورة للحصول على ردود ذكية ودقيقة.",
+  aboutFast: "سريع وموثوق",
+  aboutFastDesc: "ردود فورية حتى ترى الإجابات أثناء توليدها.",
+  aboutPrivate: "خاص وآمن",
+  aboutPrivateDesc: "محادثاتك مشفرة ولن تُباع لأطراف ثالثة.",
+  aboutAvailable: "متاح دائماً",
+  aboutAvailableDesc: "استخدم tatAI من أي جهاز، في أي مكان، في أي وقت.",
 };
 
 const ru: Translations = {
@@ -293,6 +411,44 @@ const ru: Translations = {
   modelFlashDesc: "Молниеносные ответы",
   modelNovaDesc: "Лучший для большинства задач",
   modelOrionDesc: "Глубокое мышление и анализ",
+  projects: "Проекты",
+  allChats: "Все чаты",
+  pinned: "Закреплённые",
+  newProject: "Новый проект",
+  moveToProject: "Переместить в проект",
+  removeFromProject: "Удалить из проекта",
+  moveTo: "Переместить в",
+  backToChats: "← Все чаты",
+  shareLink: "Поделиться ссылкой",
+  rename: "Переименовать",
+  pin: "Закрепить",
+  unpin: "Открепить",
+  delete: "Удалить",
+  suggFixBug: "Исправить баг",
+  suggFixBugDesc: "Вставь код, получи решение",
+  suggWriteEmail: "Написать письмо",
+  suggWriteEmailDesc: "Чётко и профессионально",
+  suggSummarize: "Краткое изложение",
+  suggSummarizeDesc: "Суть чего угодно",
+  suggPlanWeek: "Спланировать неделю",
+  suggPlanWeekDesc: "Продуктивный график",
+  suggLearnConcept: "Изучить концепцию",
+  suggLearnConceptDesc: "Простые объяснения",
+  suggWriteBio: "Написать биографию",
+  suggWriteBioDesc: "Обо мне и LinkedIn",
+  suggCompare: "Сравнить варианты",
+  suggCompareDesc: "Плюсы и минусы",
+  suggGenerateIdeas: "Генерировать идеи",
+  suggGenerateIdeasDesc: "Творческое мышление",
+  aboutSubtitle: "Ваш личный ИИ-помощник, созданный, чтобы сделать вас продуктивнее, креативнее и образованнее.",
+  aboutPoweredByAI: "На базе ИИ",
+  aboutPoweredByAIDesc: "Современные языковые модели для умных и точных ответов.",
+  aboutFast: "Быстро и надёжно",
+  aboutFastDesc: "Потоковые ответы — видите результат по мере генерации.",
+  aboutPrivate: "Приватно и безопасно",
+  aboutPrivateDesc: "Ваши разговоры зашифрованы и никогда не продаются третьим лицам.",
+  aboutAvailable: "Всегда доступен",
+  aboutAvailableDesc: "Используйте tatAI с любого устройства, где угодно и когда угодно.",
 };
 
 const zh: Translations = {
@@ -364,6 +520,44 @@ const zh: Translations = {
   modelFlashDesc: "极速回答",
   modelNovaDesc: "适合大多数任务",
   modelOrionDesc: "深度推理与分析",
+  projects: "项目",
+  allChats: "所有对话",
+  pinned: "置顶",
+  newProject: "新项目",
+  moveToProject: "移至项目",
+  removeFromProject: "从项目中移除",
+  moveTo: "移至",
+  backToChats: "← 所有对话",
+  shareLink: "分享链接",
+  rename: "重命名",
+  pin: "置顶",
+  unpin: "取消置顶",
+  delete: "删除",
+  suggFixBug: "修复Bug",
+  suggFixBugDesc: "粘贴代码，获取修复",
+  suggWriteEmail: "写邮件",
+  suggWriteEmailDesc: "清晰专业",
+  suggSummarize: "总结文本",
+  suggSummarizeDesc: "快速摘要",
+  suggPlanWeek: "规划我的一周",
+  suggPlanWeekDesc: "高效日程",
+  suggLearnConcept: "学习概念",
+  suggLearnConceptDesc: "简单解释",
+  suggWriteBio: "写个人简介",
+  suggWriteBioDesc: "关于我和LinkedIn",
+  suggCompare: "比较选项",
+  suggCompareDesc: "利弊分析",
+  suggGenerateIdeas: "生成创意",
+  suggGenerateIdeasDesc: "创意思维",
+  aboutSubtitle: "您的个人AI助手，致力于让您更高效、更有创意、更博学。",
+  aboutPoweredByAI: "AI驱动",
+  aboutPoweredByAIDesc: "最先进的语言模型，提供智能准确的回答。",
+  aboutFast: "快速可靠",
+  aboutFastDesc: "流式响应，实时看到答案生成过程。",
+  aboutPrivate: "私密安全",
+  aboutPrivateDesc: "您的对话经过加密，绝不出售给第三方。",
+  aboutAvailable: "随时可用",
+  aboutAvailableDesc: "从任何设备、任何地方、任何时间使用tatAI。",
 };
 
 const es: Translations = {
@@ -435,6 +629,44 @@ const es: Translations = {
   modelFlashDesc: "Respuestas ultrarrápidas",
   modelNovaDesc: "El mejor para la mayoría",
   modelOrionDesc: "Razonamiento profundo y análisis",
+  projects: "Proyectos",
+  allChats: "Todos los chats",
+  pinned: "Fijados",
+  newProject: "Nuevo proyecto",
+  moveToProject: "Mover a proyecto",
+  removeFromProject: "Quitar del proyecto",
+  moveTo: "Mover a",
+  backToChats: "← Todos los chats",
+  shareLink: "Compartir enlace",
+  rename: "Renombrar",
+  pin: "Fijar",
+  unpin: "Desfijar",
+  delete: "Eliminar",
+  suggFixBug: "Corregir un error",
+  suggFixBugDesc: "Pega código, obtén solución",
+  suggWriteEmail: "Escribir un correo",
+  suggWriteEmailDesc: "Claro y profesional",
+  suggSummarize: "Resumir texto",
+  suggSummarizeDesc: "Resumen de cualquier cosa",
+  suggPlanWeek: "Planificar mi semana",
+  suggPlanWeekDesc: "Agenda productiva",
+  suggLearnConcept: "Aprender un concepto",
+  suggLearnConceptDesc: "Explicaciones simples",
+  suggWriteBio: "Escribir una bio",
+  suggWriteBioDesc: "Sobre mí y LinkedIn",
+  suggCompare: "Comparar opciones",
+  suggCompareDesc: "Pros y contras",
+  suggGenerateIdeas: "Generar ideas",
+  suggGenerateIdeasDesc: "Pensamiento creativo",
+  aboutSubtitle: "Tu asistente personal de IA, diseñado para hacerte más productivo, creativo e informado.",
+  aboutPoweredByAI: "Impulsado por IA",
+  aboutPoweredByAIDesc: "Modelos de lenguaje de última generación para respuestas inteligentes y precisas.",
+  aboutFast: "Rápido y fiable",
+  aboutFastDesc: "Respuestas en streaming para que veas las respuestas mientras se generan.",
+  aboutPrivate: "Privado y seguro",
+  aboutPrivateDesc: "Tus conversaciones están cifradas y nunca se venden a terceros.",
+  aboutAvailable: "Siempre disponible",
+  aboutAvailableDesc: "Accede a tatAI desde cualquier dispositivo, en cualquier lugar, en cualquier momento.",
 };
 
 const fr: Translations = {
@@ -506,6 +738,44 @@ const fr: Translations = {
   modelFlashDesc: "Réponses ultra-rapides",
   modelNovaDesc: "Idéal pour la plupart des tâches",
   modelOrionDesc: "Raisonnement profond et analyse",
+  projects: "Projets",
+  allChats: "Toutes les discussions",
+  pinned: "Épinglés",
+  newProject: "Nouveau projet",
+  moveToProject: "Déplacer vers le projet",
+  removeFromProject: "Retirer du projet",
+  moveTo: "Déplacer vers",
+  backToChats: "← Toutes les discussions",
+  shareLink: "Partager le lien",
+  rename: "Renommer",
+  pin: "Épingler",
+  unpin: "Désépingler",
+  delete: "Supprimer",
+  suggFixBug: "Corriger un bug",
+  suggFixBugDesc: "Collez le code, obtenez la correction",
+  suggWriteEmail: "Rédiger un e-mail",
+  suggWriteEmailDesc: "Clair et professionnel",
+  suggSummarize: "Résumer un texte",
+  suggSummarizeDesc: "L'essentiel en bref",
+  suggPlanWeek: "Planifier ma semaine",
+  suggPlanWeekDesc: "Planning productif",
+  suggLearnConcept: "Apprendre un concept",
+  suggLearnConceptDesc: "Explications simples",
+  suggWriteBio: "Rédiger une bio",
+  suggWriteBioDesc: "À mon sujet et LinkedIn",
+  suggCompare: "Comparer des options",
+  suggCompareDesc: "Avantages et inconvénients",
+  suggGenerateIdeas: "Générer des idées",
+  suggGenerateIdeasDesc: "Pensée créative",
+  aboutSubtitle: "Votre assistant IA personnel, conçu pour vous rendre plus productif, créatif et informé.",
+  aboutPoweredByAI: "Propulsé par l'IA",
+  aboutPoweredByAIDesc: "Modèles de langage de pointe pour des réponses intelligentes et précises.",
+  aboutFast: "Rapide et fiable",
+  aboutFastDesc: "Réponses en streaming pour voir les réponses au fur et à mesure.",
+  aboutPrivate: "Privé et sécurisé",
+  aboutPrivateDesc: "Vos conversations sont chiffrées et ne sont jamais vendues à des tiers.",
+  aboutAvailable: "Toujours disponible",
+  aboutAvailableDesc: "Accédez à tatAI depuis n'importe quel appareil, n'importe où, n'importe quand.",
 };
 
 const de: Translations = {
@@ -577,6 +847,44 @@ const de: Translations = {
   modelFlashDesc: "Blitzschnelle Antworten",
   modelNovaDesc: "Ideal für die meisten Aufgaben",
   modelOrionDesc: "Tiefes Denken & Analyse",
+  projects: "Projekte",
+  allChats: "Alle Chats",
+  pinned: "Angeheftet",
+  newProject: "Neues Projekt",
+  moveToProject: "In Projekt verschieben",
+  removeFromProject: "Aus Projekt entfernen",
+  moveTo: "Verschieben nach",
+  backToChats: "← Alle Chats",
+  shareLink: "Link teilen",
+  rename: "Umbenennen",
+  pin: "Anheften",
+  unpin: "Lösen",
+  delete: "Löschen",
+  suggFixBug: "Bug beheben",
+  suggFixBugDesc: "Code einfügen, Lösung erhalten",
+  suggWriteEmail: "E-Mail schreiben",
+  suggWriteEmailDesc: "Klar und professionell",
+  suggSummarize: "Text zusammenfassen",
+  suggSummarizeDesc: "Kurzfassung von allem",
+  suggPlanWeek: "Woche planen",
+  suggPlanWeekDesc: "Produktiver Zeitplan",
+  suggLearnConcept: "Konzept lernen",
+  suggLearnConceptDesc: "Einfache Erklärungen",
+  suggWriteBio: "Bio schreiben",
+  suggWriteBioDesc: "Über mich & LinkedIn",
+  suggCompare: "Optionen vergleichen",
+  suggCompareDesc: "Vor- und Nachteile",
+  suggGenerateIdeas: "Ideen generieren",
+  suggGenerateIdeasDesc: "Kreatives Denken",
+  aboutSubtitle: "Ihr persönlicher KI-Assistent, entwickelt um Sie produktiver, kreativer und besser informiert zu machen.",
+  aboutPoweredByAI: "KI-gestützt",
+  aboutPoweredByAIDesc: "Modernste Sprachmodelle für intelligente, genaue Antworten.",
+  aboutFast: "Schnell & zuverlässig",
+  aboutFastDesc: "Streaming-Antworten, damit Sie Antworten während der Generierung sehen.",
+  aboutPrivate: "Privat & sicher",
+  aboutPrivateDesc: "Ihre Gespräche sind verschlüsselt und werden nie an Dritte verkauft.",
+  aboutAvailable: "Immer verfügbar",
+  aboutAvailableDesc: "Nutzen Sie tatAI von jedem Gerät, überall, jederzeit.",
 };
 
 const tr: Translations = {
@@ -648,6 +956,44 @@ const tr: Translations = {
   modelFlashDesc: "Yıldırım hızında yanıtlar",
   modelNovaDesc: "Çoğu görev için en iyisi",
   modelOrionDesc: "Derin akıl yürütme ve analiz",
+  projects: "Projeler",
+  allChats: "Tüm Sohbetler",
+  pinned: "Sabitlenmiş",
+  newProject: "Yeni proje",
+  moveToProject: "Projeye taşı",
+  removeFromProject: "Projeden çıkar",
+  moveTo: "Taşı",
+  backToChats: "← Tüm Sohbetler",
+  shareLink: "Bağlantıyı paylaş",
+  rename: "Yeniden adlandır",
+  pin: "Sabitle",
+  unpin: "Sabitlemeyi kaldır",
+  delete: "Sil",
+  suggFixBug: "Hata düzelt",
+  suggFixBugDesc: "Kodu yapıştır, çözümü al",
+  suggWriteEmail: "E-posta yaz",
+  suggWriteEmailDesc: "Net ve profesyonel",
+  suggSummarize: "Metin özetle",
+  suggSummarizeDesc: "Her şeyin özeti",
+  suggPlanWeek: "Haftamı planla",
+  suggPlanWeekDesc: "Verimli program",
+  suggLearnConcept: "Kavram öğren",
+  suggLearnConceptDesc: "Basit açıklamalar",
+  suggWriteBio: "Biyografi yaz",
+  suggWriteBioDesc: "Hakkımda ve LinkedIn",
+  suggCompare: "Seçenekleri karşılaştır",
+  suggCompareDesc: "Artılar ve eksiler",
+  suggGenerateIdeas: "Fikir üret",
+  suggGenerateIdeasDesc: "Yaratıcı düşünce",
+  aboutSubtitle: "Kişisel yapay zeka asistanınız, sizi daha üretken, yaratıcı ve bilgili kılmak için tasarlandı.",
+  aboutPoweredByAI: "YZ Destekli",
+  aboutPoweredByAIDesc: "Akıllı ve doğru yanıtlar için en gelişmiş dil modelleri.",
+  aboutFast: "Hızlı ve Güvenilir",
+  aboutFastDesc: "Yanıtları oluşturulurken görmek için akış yanıtları.",
+  aboutPrivate: "Özel ve Güvenli",
+  aboutPrivateDesc: "Konuşmalarınız şifrelenir ve asla üçüncü taraflara satılmaz.",
+  aboutAvailable: "Her Zaman Erişilebilir",
+  aboutAvailableDesc: "tatAI'ya herhangi bir cihazdan, her yerden, her zaman erişin.",
 };
 
 const ky: Translations = {
@@ -719,6 +1065,44 @@ const ky: Translations = {
   modelFlashDesc: "Жылдырым ылдам жооптор",
   modelNovaDesc: "Көпчүлүк тапшырмалар үчүн эң жакшы",
   modelOrionDesc: "Терең ой жүгүртүү жана анализ",
+  projects: "Долбоорлор",
+  allChats: "Бардык чаттар",
+  pinned: "Бекитилген",
+  newProject: "Жаңы долбоор",
+  moveToProject: "Долбоорго жылдыруу",
+  removeFromProject: "Долбоордон чыгаруу",
+  moveTo: "Жылдыруу",
+  backToChats: "← Бардык чаттар",
+  shareLink: "Шилтемени бөлүшүү",
+  rename: "Кайра атоо",
+  pin: "Бекитүү",
+  unpin: "Бекитүүнү алып салуу",
+  delete: "Жок кылуу",
+  suggFixBug: "Катаны оңдоо",
+  suggFixBugDesc: "Код кой, чечим ал",
+  suggWriteEmail: "Email жазуу",
+  suggWriteEmailDesc: "Так жана кесипкөй",
+  suggSummarize: "Текстти кыскартуу",
+  suggSummarizeDesc: "Баарынын кыскача мазмуну",
+  suggPlanWeek: "Жумамды пландоо",
+  suggPlanWeekDesc: "Натыйжалуу график",
+  suggLearnConcept: "Түшүнүктү үйрөнүү",
+  suggLearnConceptDesc: "Жөнөкөй түшүндүрмөлөр",
+  suggWriteBio: "Биография жазуу",
+  suggWriteBioDesc: "Мен жөнүндө жана LinkedIn",
+  suggCompare: "Варианттарды салыштыруу",
+  suggCompareDesc: "Артыкчылыктар жана кемчиликтер",
+  suggGenerateIdeas: "Идеяларды жаратуу",
+  suggGenerateIdeasDesc: "Чыгармачыл ой жүгүртүү",
+  aboutSubtitle: "Сиздин жеке AI жардамчыңыз, сизди өнүмдүүрөөк, чыгармачыл жана маалыматтуу кылуу үчүн жаратылды.",
+  aboutPoweredByAI: "AI менен иштейт",
+  aboutPoweredByAIDesc: "Акылдуу жана так жооптор үчүн эң заманбап тил моделдери.",
+  aboutFast: "Ылдам жана ишенимдүү",
+  aboutFastDesc: "Жооптор жаратылып жатканда көрүү үчүн агым жооптору.",
+  aboutPrivate: "Жеке жана коопсуз",
+  aboutPrivateDesc: "Сиздин сүйлөшүүлөрүңүз шифрленген жана эч качан үчүнчү тараптарга сатылбайт.",
+  aboutAvailable: "Дайым жеткиликтүү",
+  aboutAvailableDesc: "tatAI-га ар кандай түзмөктөн, каалаган жерде, каалаган убакта кириңиз.",
 };
 
 const pt: Translations = {
@@ -790,6 +1174,44 @@ const pt: Translations = {
   modelFlashDesc: "Respostas ultra-rápidas",
   modelNovaDesc: "Melhor para a maioria das tarefas",
   modelOrionDesc: "Raciocínio profundo e análise",
+  projects: "Projetos",
+  allChats: "Todos os chats",
+  pinned: "Fixados",
+  newProject: "Novo projeto",
+  moveToProject: "Mover para projeto",
+  removeFromProject: "Remover do projeto",
+  moveTo: "Mover para",
+  backToChats: "← Todos os chats",
+  shareLink: "Compartilhar link",
+  rename: "Renomear",
+  pin: "Fixar",
+  unpin: "Desafixar",
+  delete: "Excluir",
+  suggFixBug: "Corrigir um bug",
+  suggFixBugDesc: "Cole o código, obtenha a correção",
+  suggWriteEmail: "Escrever um e-mail",
+  suggWriteEmailDesc: "Claro e profissional",
+  suggSummarize: "Resumir texto",
+  suggSummarizeDesc: "Resumo de qualquer coisa",
+  suggPlanWeek: "Planejar minha semana",
+  suggPlanWeekDesc: "Agenda produtiva",
+  suggLearnConcept: "Aprender um conceito",
+  suggLearnConceptDesc: "Explicações simples",
+  suggWriteBio: "Escrever uma bio",
+  suggWriteBioDesc: "Sobre mim e LinkedIn",
+  suggCompare: "Comparar opções",
+  suggCompareDesc: "Prós e contras",
+  suggGenerateIdeas: "Gerar ideias",
+  suggGenerateIdeasDesc: "Pensamento criativo",
+  aboutSubtitle: "Seu assistente de IA pessoal, criado para torná-lo mais produtivo, criativo e informado.",
+  aboutPoweredByAI: "Powered by AI",
+  aboutPoweredByAIDesc: "Modelos de linguagem de última geração para respostas inteligentes e precisas.",
+  aboutFast: "Rápido e confiável",
+  aboutFastDesc: "Respostas em streaming para que você veja as respostas sendo geradas.",
+  aboutPrivate: "Privado e seguro",
+  aboutPrivateDesc: "Suas conversas são criptografadas e nunca vendidas a terceiros.",
+  aboutAvailable: "Sempre disponível",
+  aboutAvailableDesc: "Acesse o tatAI de qualquer dispositivo, em qualquer lugar, a qualquer hora.",
 };
 
 // Map from language name (as stored in localStorage) to translation object
@@ -831,6 +1253,20 @@ export function getTranslations(langName?: string | null): Translations {
     return en;
   }
   return LANG_MAP[langName] ?? en;
+}
+
+const RTL_LANG_NAMES = new Set(["Arabic"]);
+const RTL_LOCALE_PREFIXES = new Set(["ar", "he", "fa", "ur"]);
+
+export function isRTLLanguage(langName?: string | null): boolean {
+  if (!langName || langName === "auto") {
+    if (typeof navigator !== "undefined") {
+      const prefix = navigator.language.split("-")[0].toLowerCase();
+      return RTL_LOCALE_PREFIXES.has(prefix);
+    }
+    return false;
+  }
+  return RTL_LANG_NAMES.has(langName);
 }
 
 export type { Translations as T };

@@ -1,14 +1,19 @@
-import type { Metadata } from "next";
+"use client";
 import { ArrowLeft, Sparkles, Zap, Shield, Globe } from "lucide-react";
 import Link from "next/link";
 import { TataILogo } from "@/components/Logo";
-
-export const metadata: Metadata = {
-  title: "About tatAI",
-  description: "Learn about tatAI — the AI assistant built by tatadev LLC to make AI accessible and powerful for everyone.",
-};
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function AboutPage() {
+  const { t } = useTranslation();
+
+  const features = [
+    { icon: Sparkles, title: t.aboutPoweredByAI, desc: t.aboutPoweredByAIDesc },
+    { icon: Zap, title: t.aboutFast, desc: t.aboutFastDesc },
+    { icon: Shield, title: t.aboutPrivate, desc: t.aboutPrivateDesc },
+    { icon: Globe, title: t.aboutAvailable, desc: t.aboutAvailableDesc },
+  ];
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#0a0a0a]">
       <header className="flex items-center gap-4 px-6 py-4 border-b border-neutral-200 dark:border-white/[0.06] bg-white dark:bg-[#111] sticky top-0 z-10">
@@ -24,19 +29,14 @@ export default function AboutPage() {
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="text-center mb-12">
           <TataILogo className="w-16 h-16 mx-auto mb-5 drop-shadow-xl" />
-          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3">About tatAI</h1>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-3">{t.about}</h1>
           <p className="text-neutral-500 dark:text-white/40 text-[16px] leading-relaxed">
-            Your personal AI assistant, built to make you more productive, creative, and informed.
+            {t.aboutSubtitle}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-10">
-          {[
-            { icon: Sparkles, title: "Powered by AI", desc: "State-of-the-art language models for smart, accurate responses." },
-            { icon: Zap, title: "Fast & Reliable", desc: "Streaming responses so you see answers as they're generated." },
-            { icon: Shield, title: "Private & Secure", desc: "Your conversations are encrypted and never sold to third parties." },
-            { icon: Globe, title: "Always Available", desc: "Access tatAI from any device, anywhere, anytime." },
-          ].map(({ icon: Icon, title, desc }) => (
+          {features.map(({ icon: Icon, title, desc }) => (
             <div key={title} className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/[0.07] rounded-2xl p-5">
               <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center mb-3">
                 <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />

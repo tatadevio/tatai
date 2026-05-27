@@ -12,7 +12,7 @@ import {
   Zap as ZapIcon, Mic, MicOff, Volume2, Video, VideoOff, PhoneOff,
   ThumbsUp, ThumbsDown, RefreshCw, Share2,
   MoreHorizontal, Pin, Pencil, Trash2, Link,
-  FolderPlus, Folder, ChevronRight,
+  FolderPlus, Folder, ChevronRight, Download,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -194,6 +194,19 @@ function MessageContent({ content }: { content: string }) {
         strong: ({ children }) => <strong className="font-semibold text-neutral-900 dark:text-white">{children}</strong>,
         a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline underline-offset-2 decoration-blue-400/40 hover:decoration-blue-400 transition-colors">{children}</a>,
         hr: () => <hr className="border-neutral-200 dark:border-white/[0.08] my-4" />,
+        img: ({ src, alt }) => {
+          const srcStr = typeof src === "string" ? src : undefined;
+          return (
+            <div className="my-4">
+              <img src={srcStr} alt={alt ?? "Generated image"} className="rounded-2xl max-w-full border border-neutral-200 dark:border-white/[0.08] shadow-sm" />
+              {srcStr && (
+                <a href={srcStr} download="tatai-image.png" className="inline-flex items-center gap-1.5 mt-2 text-xs text-blue-500 hover:underline">
+                  <Download className="w-3 h-3" /> Download
+                </a>
+              )}
+            </div>
+          );
+        },
       }}
     >
       {content}
@@ -243,21 +256,21 @@ function SessionRow({ s, activeSession, renamingId, renameValue, setRenameValue,
 export default function Home() {
   const router = useRouter();
   const { user, loading: authLoading, logout, setShowLogin } = useAuth();
-  const t = useTranslation();
+  const { t, isRTL } = useTranslation();
   const SUGGESTIONS = useMemo(() => {
     const pool = [
       { icon: Code, label: t.suggWriteCode, desc: t.suggWriteCodeDesc, prompt: "Help me write a Python script that reads a CSV file and calculates statistics." },
       { icon: FileText, label: t.suggDraft, desc: t.suggDraftDesc, prompt: "Write a professional LinkedIn post about launching a new AI startup." },
       { icon: Search, label: t.suggResearch, desc: t.suggResearchDesc, prompt: "Explain how large language models work in simple terms." },
       { icon: Zap, label: t.suggBrainstorm, desc: t.suggBrainstormDesc, prompt: "Give me 10 startup ideas in the AI space for 2026." },
-      { icon: Code, label: "Fix a bug", desc: "Paste code, get fix", prompt: "Here's my code — can you find and fix the bug?" },
-      { icon: FileText, label: "Write an email", desc: "Clear & professional", prompt: "Write a professional follow-up email after a job interview." },
-      { icon: Search, label: "Summarize text", desc: "TL;DR anything", prompt: "Summarize the following article in 5 bullet points:" },
-      { icon: Zap, label: "Plan my week", desc: "Productive schedule", prompt: "Help me plan a productive week as a startup founder." },
-      { icon: Code, label: "Learn a concept", desc: "Simple explanations", prompt: "Explain REST APIs like I'm 10 years old." },
-      { icon: FileText, label: "Write a bio", desc: "About me & LinkedIn", prompt: "Write a short professional bio for my LinkedIn profile. I'm a software engineer at a startup." },
-      { icon: Search, label: "Compare options", desc: "Pros & cons", prompt: "Compare React vs Vue vs Angular for a new web project in 2026." },
-      { icon: Zap, label: "Generate ideas", desc: "Creative thinking", prompt: "Give me 10 creative content ideas for a tech YouTube channel." },
+      { icon: Code, label: t.suggFixBug, desc: t.suggFixBugDesc, prompt: "Here's my code — can you find and fix the bug?" },
+      { icon: FileText, label: t.suggWriteEmail, desc: t.suggWriteEmailDesc, prompt: "Write a professional follow-up email after a job interview." },
+      { icon: Search, label: t.suggSummarize, desc: t.suggSummarizeDesc, prompt: "Summarize the following article in 5 bullet points:" },
+      { icon: Zap, label: t.suggPlanWeek, desc: t.suggPlanWeekDesc, prompt: "Help me plan a productive week as a startup founder." },
+      { icon: Code, label: t.suggLearnConcept, desc: t.suggLearnConceptDesc, prompt: "Explain REST APIs like I'm 10 years old." },
+      { icon: FileText, label: t.suggWriteBio, desc: t.suggWriteBioDesc, prompt: "Write a short professional bio for my LinkedIn profile. I'm a software engineer at a startup." },
+      { icon: Search, label: t.suggCompare, desc: t.suggCompareDesc, prompt: "Compare React vs Vue vs Angular for a new web project in 2026." },
+      { icon: Zap, label: t.suggGenerateIdeas, desc: t.suggGenerateIdeasDesc, prompt: "Give me 10 creative content ideas for a tech YouTube channel." },
     ];
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 4);
@@ -298,6 +311,10 @@ export default function Home() {
 
   // ── Message limits ──
   const [showLimitModal, setShowLimitModal] = useState<"login" | "upgrade" | null>(null);
+  const [msgLimitResetAt, setMsgLimitResetAt] = useState<number | null>(null);
+
+  // ── Image generation loading ──
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   // ── Projects ──
   const [projects, setProjects] = useState<Project[]>([]);
@@ -349,6 +366,9 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Preserve guest chat across login so it isn't lost when auth state changes
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pendingGuestChatRef = useRef<{ messages: any[]; title: string; sessionId: string } | null>(null);
 
   // Detect mobile and set initial sidebar state
   useEffect(() => {
@@ -382,6 +402,10 @@ export default function Home() {
 
   // Load sessions — Redis for logged-in users, localStorage for guests
   useEffect(() => {
+    // Capture pending guest chat BEFORE resetting state
+    const pending = pendingGuestChatRef.current;
+    pendingGuestChatRef.current = null;
+
     setSessions([]);
     setActiveSession(null);
     setMessages([]);
@@ -390,29 +414,55 @@ export default function Home() {
     // Use ref captured at mount — window.location.search may already be cleared by URL sync effect
     const urlChatId = initialChatIdRef.current;
 
-    // Try Redis first (cloud history)
-    user.getIdToken().then(token =>
-      fetch("/api/conversations", { headers: { Authorization: `Bearer ${token}` } })
+    user.getIdToken().then(token => {
+      // Save pending guest chat to Redis immediately (fire-and-forget)
+      if (pending && pending.messages.length > 0) {
+        fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id: pending.sessionId, title: pending.title, messages: pending.messages }),
+        }).catch(() => {});
+      }
+
+      return fetch("/api/conversations", { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
-        .then(data => {
-          if (Array.isArray(data) && data.length > 0) {
-            setSessions(data.map((s: any) => ({ id: s.id, title: s.title ?? "Chat", pinned: s.pinned, projectId: s.projectId })));
-          } else if (storageKey) {
-            // Fallback: migrate from localStorage
-            const saved = localStorage.getItem(storageKey);
-            if (saved) setSessions(JSON.parse(saved));
+        .then((data: any) => {
+          const cloudSessions = Array.isArray(data) && data.length > 0
+            ? data.map((s: any) => ({ id: s.id, title: s.title ?? "Chat", pinned: s.pinned, projectId: s.projectId }))
+            : [];
+
+          if (pending && pending.messages.length > 0) {
+            // Merge pending session with cloud sessions (pending first, dedup by id)
+            const merged = [
+              { id: pending.sessionId, title: pending.title },
+              ...cloudSessions.filter((s: any) => s.id !== pending.sessionId),
+            ];
+            setSessions(merged);
+            setActiveSession(pending.sessionId);
+            setMessages(pending.messages);
+          } else {
+            if (cloudSessions.length > 0) {
+              setSessions(cloudSessions);
+            } else if (storageKey) {
+              const saved = localStorage.getItem(storageKey);
+              if (saved) { try { setSessions(JSON.parse(saved)); } catch {} }
+            }
+            if (urlChatId) loadSession(urlChatId);
           }
-          // Auto-load chat from URL after sessions are ready
-          if (urlChatId) loadSession(urlChatId);
         })
         .catch(() => {
           if (storageKey) {
             const saved = localStorage.getItem(storageKey);
             if (saved) { try { setSessions(JSON.parse(saved)); } catch {} }
           }
-          if (urlChatId) loadSession(urlChatId);
-        })
-    ).catch(() => {});
+          if (pending && pending.messages.length > 0) {
+            setActiveSession(pending.sessionId);
+            setMessages(pending.messages);
+          } else if (urlChatId) {
+            loadSession(urlChatId);
+          }
+        });
+    }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
@@ -492,10 +542,18 @@ export default function Home() {
       try {
         const token = await user.getIdToken();
         const sess = sessions.find(s => s.id === activeSession);
+        // Strip inline base64 images before saving (they're too large for Redis)
+        const saveable = messages.map(m => ({
+          ...m,
+          parts: m.parts.filter((p: any) => p.type === "text").map((p: any) => ({
+            ...p,
+            text: p.text?.includes("data:image/") ? "[Generated image — not saved]" : p.text,
+          })),
+        }));
         await fetch("/api/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ id: activeSession, title: sess?.title ?? "Chat", messages, projectId: sess?.projectId }),
+          body: JSON.stringify({ id: activeSession, title: sess?.title ?? "Chat", messages: saveable, projectId: sess?.projectId }),
         });
       } catch {}
     }, 1500);
@@ -899,22 +957,100 @@ export default function Home() {
   function checkMsgLimit(): boolean {
     if (!user) {
       const count = parseInt(localStorage.getItem("tatai_guest_msgs") ?? "0");
-      if (count >= 4) { setShowLimitModal("login"); return false; }
+      if (count >= 4) {
+        // Preserve current chat so it survives across the login flow
+        if (messages.length > 0) {
+          pendingGuestChatRef.current = {
+            messages: [...messages],
+            title: sessions.find(s => s.id === activeSession)?.title ?? "Chat",
+            sessionId: activeSession ?? Date.now().toString(),
+          };
+        }
+        setShowLimitModal("login");
+        return false;
+      }
       localStorage.setItem("tatai_guest_msgs", String(count + 1));
     } else if (!isPro) {
+      const WINDOW_MS = 5 * 60 * 60 * 1000;
+      const FREE_LIMIT = 10;
       const key = `tatai_free_msgs_${user.uid}`;
-      const count = parseInt(localStorage.getItem(key) ?? "0");
-      if (count >= 10) { setShowLimitModal("upgrade"); return false; }
-      localStorage.setItem(key, String(count + 1));
+      const stored = localStorage.getItem(key);
+      let win: { start: number; count: number } = stored ? JSON.parse(stored) : { start: Date.now(), count: 0 };
+      const now = Date.now();
+      if (now - win.start >= WINDOW_MS) win = { start: now, count: 0 };
+      if (win.count >= FREE_LIMIT) {
+        setMsgLimitResetAt(win.start + WINDOW_MS);
+        setShowLimitModal("upgrade");
+        return false;
+      }
+      win.count++;
+      localStorage.setItem(key, JSON.stringify(win));
     }
     return true;
   }
 
+  function formatTimeRemaining(resetAt: number): string {
+    const diff = Math.max(0, resetAt - Date.now());
+    const hours = Math.floor(diff / (60 * 60 * 1000));
+    const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+  }
+
+  function isImageRequest(text: string): boolean {
+    const lower = text.toLowerCase();
+    const imageWords = ["image", "picture", "photo", "logo", "illustration", "drawing", "artwork", "portrait", "banner", "poster", "icon", "wallpaper", "avatar", "thumbnail", "sketch", "painting", "meme", "graphic"];
+    const actionWords = ["generate", "create", "make", "draw", "design", "paint", "illustrate", "show me", "give me"];
+    return imageWords.some(w => lower.includes(w)) && actionWords.some(w => lower.includes(w));
+  }
+
+  function generateFromPrompt(prompt: string) {
+    if (isGeneratingImage || isLoading) return;
+    setIsGeneratingImage(true);
+    setInput("");
+
+    let sessionId = activeSession;
+    if (!sessionId || messages.length === 0) {
+      sessionId = Date.now().toString();
+      const title = `Image: ${prompt.slice(0, 35)}`;
+      setSessions(p => [{ id: sessionId!, title }, ...p]);
+      setActiveSession(sessionId);
+    }
+
+    const seed = Math.floor(Math.random() * 9_999_999);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
+
+    const userMsg: any = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: prompt,
+      parts: [{ type: "text", text: prompt }],
+      createdAt: new Date(),
+    };
+    const assistantMsg: any = {
+      id: `a-${Date.now()}`,
+      role: "assistant",
+      content: `![${prompt}](${imageUrl})\n\n*Generating your image — it may take a few seconds to load.*`,
+      parts: [{ type: "text", text: `![${prompt}](${imageUrl})\n\n*Generating your image — it may take a few seconds to load.*` }],
+      createdAt: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg, assistantMsg]);
+    setIsGeneratingImage(false);
+  }
+
   function handleSend() {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
-    if (!checkMsgLimit()) return;
 
     const text = input.trim();
+
+    // Auto-detect image generation requests from natural language
+    if (text && attachments.length === 0 && isImageRequest(text)) {
+      if (!checkMsgLimit()) return;
+      generateFromPrompt(text);
+      return;
+    }
+
+    if (!checkMsgLimit()) return;
     const titleText = text || (attachments[0]?.name ?? "File upload");
 
     let sessionId = activeSession;
@@ -1158,7 +1294,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-full bg-white dark:bg-[#212121] overflow-hidden">
+    <div className="flex h-full bg-white dark:bg-[#212121] overflow-hidden" dir={isRTL ? "rtl" : "ltr"}>
 
       {/* ── Mobile backdrop ── */}
       {isMobile && sidebarOpen && (
@@ -1193,11 +1329,11 @@ export default function Home() {
           {user && (
             <>
               <div className="flex items-center justify-between px-2 pt-2 pb-1">
-                <span className="text-[11px] font-medium text-neutral-400 dark:text-white/25">Projects</span>
+                <span className="text-[11px] font-medium text-neutral-400 dark:text-white/25">{t.projects}</span>
                 <button
                   onClick={e => { e.stopPropagation(); setShowNewProject(true); }}
                   className="w-5 h-5 flex items-center justify-center rounded hover:bg-neutral-200 dark:hover:bg-white/[0.08] transition-colors text-neutral-400 dark:text-white/30"
-                  title="New project"
+                  title={t.newProject}
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -1223,7 +1359,7 @@ export default function Home() {
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-neutral-400 dark:text-white/20 hover:text-neutral-600 dark:hover:text-white/40 transition-colors"
                 >
                   <FolderPlus className="w-3.5 h-3.5" />
-                  New project
+                  {t.newProject}
                 </button>
               )}
               <div className="mx-2 my-2 h-px bg-neutral-200 dark:bg-white/[0.05]" />
@@ -1241,15 +1377,15 @@ export default function Home() {
               <>
                 {activeProject && (
                   <div className="flex items-center gap-1.5 px-2 pb-1">
-                    <button onClick={() => setActiveProject(null)} className="text-[11px] text-blue-500 hover:underline">← All Chats</button>
+                    <button onClick={() => setActiveProject(null)} className="text-[11px] text-blue-500 hover:underline">{t.backToChats}</button>
                     <span className="text-[11px] text-neutral-400 dark:text-white/25">/ {projects.find(p => p.id === activeProject)?.name}</span>
                   </div>
                 )}
                 {!activeProject && (
-                  <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pb-1">All Chats</p>
+                  <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pb-1">{t.allChats}</p>
                 )}
                 {pinned.length > 0 && (
-                  <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-1 pb-1">Pinned</p>
+                  <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-2 pt-1 pb-1">{t.pinned}</p>
                 )}
                 {pinned.map(s => (
                   <SessionRow key={s.id} s={s} activeSession={activeSession} renamingId={renamingId} renameValue={renameValue} setRenameValue={setRenameValue} commitRename={commitRename} loadSession={loadSession} closeSidebarOnMobile={closeSidebarOnMobile} setCtxMenu={setCtxMenu} />
@@ -1273,13 +1409,13 @@ export default function Home() {
               onClick={e => e.stopPropagation()}
             >
               <button onClick={() => shareSession(s.id)} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors">
-                <Link className="w-3.5 h-3.5" /> Share link
+                <Link className="w-3.5 h-3.5" /> {t.shareLink}
               </button>
               <button onClick={() => startRename(s.id, s.title)} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors">
-                <Pencil className="w-3.5 h-3.5" /> Rename
+                <Pencil className="w-3.5 h-3.5" /> {t.rename}
               </button>
               <button onClick={() => pinSession(s.id)} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors">
-                <Pin className="w-3.5 h-3.5" /> {s.pinned ? "Unpin" : "Pin"}
+                <Pin className="w-3.5 h-3.5" /> {s.pinned ? t.unpin : t.pin}
               </button>
               {user && (
                 <button
@@ -1287,13 +1423,13 @@ export default function Home() {
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-700 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors"
                 >
                   <Folder className="w-3.5 h-3.5" />
-                  <span className="flex-1">Move to Project</span>
+                  <span className="flex-1">{t.moveToProject}</span>
                   <ChevronRight className="w-3 h-3 opacity-40" />
                 </button>
               )}
               <div className="my-1 mx-2 h-px bg-neutral-200 dark:bg-white/[0.06]" />
               <button onClick={(e) => { deleteSession(s.id, e); setCtxMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" /> Delete
+                <Trash2 className="w-3.5 h-3.5" /> {t.delete}
               </button>
             </div>
           );
@@ -1311,13 +1447,13 @@ export default function Home() {
               style={{ top: moveMenu.y, left: x }}
               onClick={e => e.stopPropagation()}
             >
-              <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-3 py-1.5">Move to</p>
+              <p className="text-[11px] font-medium text-neutral-400 dark:text-white/25 px-3 py-1.5">{t.moveTo}</p>
               {s.projectId && (
                 <button
                   onClick={() => moveSessionToProject(s.id, null)}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors"
                 >
-                  <span className="text-base">📤</span> Remove from project
+                  <span className="text-base">📤</span> {t.removeFromProject}
                 </button>
               )}
               {projects.map(p => (
@@ -1338,7 +1474,7 @@ export default function Home() {
                 onClick={() => { setMoveMenu(null); setCtxMenu(null); setShowNewProject(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
               >
-                <FolderPlus className="w-3.5 h-3.5" /> New project
+                <FolderPlus className="w-3.5 h-3.5" /> {t.newProject}
               </button>
             </div>
           );
@@ -1891,7 +2027,11 @@ export default function Home() {
                   return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — sign in for more` : t.disclaimer;
                 }
                 if (!isPro) {
-                  const n = 10 - parseInt(localStorage.getItem(`tatai_free_msgs_${user.uid}`) ?? "0");
+                  const WINDOW_MS = 5 * 60 * 60 * 1000;
+                  const stored = localStorage.getItem(`tatai_free_msgs_${user.uid}`);
+                  const win: { start: number; count: number } = stored ? JSON.parse(stored) : { start: Date.now(), count: 0 };
+                  const count = (Date.now() - win.start >= WINDOW_MS) ? 0 : win.count;
+                  const n = 10 - count;
                   return n > 0 ? `${n} free message${n !== 1 ? "s" : ""} left — upgrade for unlimited` : "Upgrade to Pro for unlimited messages";
                 }
                 return t.disclaimer;
@@ -2108,8 +2248,14 @@ export default function Home() {
               <div className="w-14 h-14 rounded-2xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-1">
                 <Crown className="w-7 h-7 text-violet-600 dark:text-violet-400" />
               </div>
-              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">You've used all 10 free messages</h2>
-              <p className="text-sm text-neutral-500 dark:text-white/50 leading-relaxed">Upgrade to <span className="font-semibold text-violet-600 dark:text-violet-400">tatAI Pro</span> for unlimited messages, priority access, and all models.</p>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">You&apos;ve used all 10 free messages</h2>
+              {msgLimitResetAt ? (
+                <p className="text-sm text-neutral-500 dark:text-white/50 leading-relaxed">
+                  Come back in <span className="font-semibold text-neutral-700 dark:text-white/80">{formatTimeRemaining(msgLimitResetAt)}</span> for 10 more free messages, or upgrade to Pro for unlimited access.
+                </p>
+              ) : (
+                <p className="text-sm text-neutral-500 dark:text-white/50 leading-relaxed">Upgrade to <span className="font-semibold text-violet-600 dark:text-violet-400">tatAI Pro</span> for unlimited messages, priority access, and all models.</p>
+              )}
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-2xl font-bold text-neutral-900 dark:text-white">$9.99</span>
                 <span className="text-sm text-neutral-400">/month</span>
@@ -2122,6 +2268,14 @@ export default function Home() {
               >
                 Upgrade to Pro
               </button>
+              {msgLimitResetAt && (
+                <button
+                  onClick={() => setShowLimitModal(null)}
+                  className="w-full py-3 rounded-xl text-sm font-medium text-neutral-600 dark:text-white/60 border border-neutral-200 dark:border-white/[0.08] hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors"
+                >
+                  Wait for reset in {formatTimeRemaining(msgLimitResetAt)}
+                </button>
+              )}
               <button
                 onClick={() => setShowLimitModal(null)}
                 className="w-full py-3 rounded-xl text-sm font-medium text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"

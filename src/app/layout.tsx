@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
 import { WelcomeGate } from "@/components/WelcomeGate";
 import { VisitorBeacon } from "@/components/VisitorBeacon";
+import { AndroidAppBanner } from "@/components/AndroidAppBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -134,6 +135,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <AndroidAppBanner />
             <AuthModal />
             <WelcomeGate />
             <VisitorBeacon />

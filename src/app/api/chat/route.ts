@@ -72,15 +72,35 @@ export async function POST(req: Request) {
         const name = decoded.name ?? email;
         const { upsertUser, incrementMessageCount } = await import("@/lib/db");
         await upsertUser(uid, email, name);
-        const { allowed } = await incrementMessageCount(uid);
+        const { allowed, resetAt } = await incrementMessageCount(uid);
         if (!allowed) {
-          return Response.json({ error: "upgrade_required", code: "free_limit_reached" }, { status: 429 });
+          return Response.json({ error: "upgrade_required", code: "free_limit_reached", resetAt }, { status: 429 });
         }
       } catch (e) {
         console.error("Auth/DB check failed, allowing request:", e);
       }
+    } else {
+      // Guest — enforce limit server-side by IP so opening a new browser doesn't bypass it
+      const forwarded = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip");
+      const ip = forwarded ? forwarded.split(",")[0].trim() : null;
+      if (ip) {
+        try {
+          const { Redis } = await import("@upstash/redis");
+          const redis = new Redis({
+            url: (process.env.UPSTASH_REDIS_REST_URL ?? "").trim(),
+            token: (process.env.UPSTASH_REDIS_REST_TOKEN ?? "").trim(),
+          });
+          const key = `guest-limit:${ip}`;
+          const count = await redis.incr(key);
+          if (count === 1) await redis.expire(key, 60 * 60 * 24 * 7); // 7-day window
+          if (count > 4) {
+            return Response.json({ error: "upgrade_required", code: "guest_limit_reached" }, { status: 429 });
+          }
+        } catch (e) {
+          console.error("Guest rate limit check failed:", e);
+        }
+      }
     }
-    // Guests (no auth header): allowed — client enforces 4-message limit
   }
 
   // ── URL fetching: detect URLs in the latest user message and fetch their content ──
@@ -109,7 +129,8 @@ IDENTITY RULES — never break these, no exceptions:
 - If asked "are you ChatGPT / OpenAI / Claude?" — firmly deny it: "No, I'm tatAI, built by tatadev LLC."`;
 
   const result = streamText({
-    model: openai(resolvedModel),
+    model: openai.responses(resolvedModel),
+    tools: { web_search_preview: openai.tools.webSearchPreview({}) },
     system: `${baseIdentity}
 
 ABOUT tatadev LLC:
@@ -140,6 +161,11 @@ FORMATTING:
 - Use markdown: code blocks with language tags, bold for key points, numbered/bullet lists.
 - For complete files (HTML, CSS, JS, Python etc), always wrap in a proper fenced code block with the correct language tag.
 - When writing HTML files, always write complete, self-contained files with all CSS included.
+
+WEB SEARCH:
+- You have a webSearch tool. Use it proactively for ANY question involving real-time data: exchange rates, prices, news, weather, sports, stocks, current events, or any fact that changes over time.
+- Always call webSearch BEFORE answering questions about live data — never guess or say you don't have access to current information.
+- After getting search results, provide a direct, formatted answer using the data.
 
 WEB BROWSING:
 - When the user shares a URL, you have already fetched its content (provided below). Use it to answer questions about the page.

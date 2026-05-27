@@ -129,7 +129,7 @@ export default function SettingsPage() {
   const { user, loading, setShowLogin } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
-  const t = useTranslation();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   // language stored as label e.g. "Arabic", "auto"
   const [language, setLanguageState] = useState("auto");

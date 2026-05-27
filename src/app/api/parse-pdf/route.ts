@@ -2,6 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
 
+async function parseWithPdfParse(buffer: Buffer): Promise<{ text: string; pages: number } | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod: any = await import("pdf-parse");
+    const pdfParse = mod.default ?? mod;
+    const data = await pdfParse(buffer);
+    const text = data.text?.trim() ?? "";
+    if (!text) return null;
+    return { text, pages: data.numpages ?? 0 };
+  } catch {
+    return null;
+  }
+}
+
+async function parseWithPdfjs(buffer: Buffer): Promise<{ text: string; pages: number } | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), useWorkerFetch: false, isEvalSupported: false });
+    const doc = await loadingTask.promise;
+    const numPages: number = doc.numPages;
+    const pageTexts: string[] = [];
+    for (let i = 1; i <= numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pageText = content.items.map((item: any) => item.str ?? "").join(" ").trim();
+      if (pageText) pageTexts.push(pageText);
+    }
+    await doc.destroy();
+    const text = pageTexts.join("\n\n").trim();
+    if (!text) return null;
+    return { text, pages: numPages };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -16,25 +54,23 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Dynamic import to avoid SSR issues with pdf-parse
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod: any = await import("pdf-parse");
-    const pdfParse = mod.default ?? mod;
-    const data = await pdfParse(buffer);
+    // Try pdf-parse first; fall back to pdfjs-dist for tricky PDFs
+    let result = await parseWithPdfParse(buffer);
+    if (!result) result = await parseWithPdfjs(buffer);
 
-    const text = data.text?.trim() ?? "";
-    if (!text) return NextResponse.json({ error: "Could not extract text from this PDF (may be scanned/image-based)" }, { status: 422 });
+    if (!result || !result.text) {
+      return NextResponse.json({
+        error: "Could not extract text from this PDF. It may be scanned/image-based, encrypted, or corrupted. Try copying the text and pasting it directly.",
+      }, { status: 422 });
+    }
 
-    // Limit to ~50k chars to avoid token overflow
-    const truncated = text.length > 50000 ? text.slice(0, 50000) + "\n\n[PDF truncated — too long]" : text;
+    const truncated = result.text.length > 50000
+      ? result.text.slice(0, 50000) + "\n\n[PDF truncated — too long]"
+      : result.text;
 
-    return NextResponse.json({
-      text: truncated,
-      pages: data.numpages,
-      fileName: file.name,
-    });
-  } catch (e: any) {
+    return NextResponse.json({ text: truncated, pages: result.pages, fileName: file.name });
+  } catch (e) {
     console.error("PDF parse error:", e);
-    return NextResponse.json({ error: "Failed to parse PDF" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to process PDF" }, { status: 500 });
   }
 }

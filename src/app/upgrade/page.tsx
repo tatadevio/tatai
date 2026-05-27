@@ -16,7 +16,7 @@ const PayPalBox = dynamic(() => import("@/components/PayPalBox"), {
 });
 
 const FREE_FEATURES = [
-  "20 messages per day",
+  "10 messages every 5 hours",
   "tatAI Zara & Nova models",
   "File & image uploads",
   "Web browsing",
@@ -163,25 +163,25 @@ export default function UpgradePage() {
                 </div>
 
                 {/* Pro */}
-                <div className="relative bg-gradient-to-b from-violet-500/[0.12] to-indigo-500/[0.06] border border-violet-500/30 rounded-3xl p-6 sm:p-7 overflow-hidden">
-                  <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+                <div className="relative bg-gradient-to-b from-violet-600 to-indigo-700 dark:from-violet-500/[0.12] dark:to-indigo-500/[0.06] border border-violet-600/50 dark:border-violet-500/30 rounded-3xl p-6 sm:p-7 overflow-hidden">
+                  <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-white/30 dark:via-violet-500/50 to-transparent" />
                   <div className="absolute top-4 right-4">
-                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-lg shadow-violet-500/30">
+                    <span className="inline-flex items-center gap-1 bg-white/20 dark:bg-gradient-to-r dark:from-violet-600 dark:to-indigo-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-lg">
                       <Zap className="w-3 h-3" /> POPULAR
                     </span>
                   </div>
 
-                  <p className="text-violet-400 text-xs font-semibold uppercase tracking-widest mb-3">Pro</p>
+                  <p className="text-white/60 dark:text-violet-400 text-xs font-semibold uppercase tracking-widest mb-3">Pro</p>
                   <div className="flex items-end gap-1.5 mb-6">
                     <span className="text-4xl font-bold text-white">$9.99</span>
-                    <span className="text-white/40 text-sm mb-1.5">/ month</span>
+                    <span className="text-white/60 text-sm mb-1.5">/ month</span>
                   </div>
 
                   <ul className="space-y-3 mb-7">
                     {PRO_FEATURES.map(({ text, icon: Icon }) => (
-                      <li key={text} className="flex items-center gap-3 text-sm text-white/80">
-                        <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-3 h-3 text-violet-400" />
+                      <li key={text} className="flex items-center gap-3 text-sm text-white/90">
+                        <div className="w-5 h-5 rounded-full bg-white/20 dark:bg-violet-500/20 border border-white/30 dark:border-violet-500/30 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-3 h-3 text-white dark:text-violet-400" />
                         </div>
                         {text}
                       </li>
@@ -190,10 +190,11 @@ export default function UpgradePage() {
 
                   {/* PayPal — shown only when logged in */}
                   {loading ? (
-                    <div className="w-full h-11 rounded-xl bg-white/[0.08] animate-pulse" />
+                    <div className="w-full h-11 rounded-xl bg-white/30 dark:bg-white/[0.08] animate-pulse" />
                   ) : user ? (
                     <PayPalBox onSuccess={() => { setSuccess(true); setTimeout(() => router.push("/"), 2500); }} />
-                  ) : (
+                  ) : null}
+                  {!loading && !user && (
                     <button
                       onClick={handleUpgradeClick}
                       className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25"
