@@ -77,6 +77,13 @@ const PROJECT_ICONS = ["📁","💼","📚","✍️","🏥","✈️","💰","�
 
 
 
+function getSuggestionAccent(Icon: React.ElementType) {
+  if (Icon === Code) return { iconCls: "text-blue-600 dark:text-blue-400", iconBg: "bg-blue-50 dark:bg-blue-500/[0.12] group-hover:bg-blue-100 dark:group-hover:bg-blue-500/[0.18]" };
+  if (Icon === FileText) return { iconCls: "text-emerald-600 dark:text-emerald-400", iconBg: "bg-emerald-50 dark:bg-emerald-500/[0.12] group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/[0.18]" };
+  if (Icon === Search) return { iconCls: "text-amber-600 dark:text-amber-400", iconBg: "bg-amber-50 dark:bg-amber-500/[0.12] group-hover:bg-amber-100 dark:group-hover:bg-amber-500/[0.18]" };
+  return { iconCls: "text-violet-600 dark:text-violet-400", iconBg: "bg-violet-50 dark:bg-violet-500/[0.12] group-hover:bg-violet-100 dark:group-hover:bg-violet-500/[0.18]" };
+}
+
 // Maps MIME type (and optional filename) → { label, color, bg, icon }
 function fileTypeInfo(mime = "", fileName = "") {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -1686,28 +1693,37 @@ export default function Home() {
           {messages.length === 0 ? (
             /* ── Welcome screen ── */
             <div className="flex flex-col items-center justify-center min-h-full px-4 pb-40 pt-10">
-              <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight text-neutral-900 dark:text-white mb-2 text-center">
+              <div className="relative mb-7 flex items-center justify-center">
+                <div className="absolute w-36 h-36 rounded-full bg-blue-500/10 dark:bg-blue-400/[0.08] blur-3xl" />
+                <div className="relative w-[62px] h-[62px] rounded-[18px] bg-gradient-to-br from-blue-500 via-blue-600 to-violet-600 flex items-center justify-center shadow-xl shadow-blue-500/30 dark:shadow-blue-500/20">
+                  <TataILogo className="w-8 h-8" />
+                </div>
+              </div>
+              <h1 className="text-[28px] sm:text-[38px] font-bold tracking-tight text-neutral-900 dark:text-white mb-2.5 text-center leading-[1.15]">
                 {t.howCanIHelp}
               </h1>
-              <p className="text-neutral-500 dark:text-neutral-400 text-[14px] sm:text-[15px] mb-9 text-center font-normal">
+              <p className="text-neutral-500 dark:text-neutral-400 text-[14px] sm:text-[15px] mb-10 text-center font-normal max-w-[360px] leading-relaxed">
                 {t.alwaysReady}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-[540px]">
-                {SUGGESTIONS.map(({ icon: Icon, label, desc, prompt }) => (
-                  <button
-                    key={label}
-                    onClick={() => { const id = Date.now().toString(); setSessions((p) => [{ id, title: prompt.slice(0, 40) }, ...p]); setActiveSession(id); sendMessage({ text: prompt }); }}
-                    className="flex items-center gap-3 p-3.5 rounded-2xl border border-neutral-200/80 dark:border-white/[0.07] bg-neutral-50/50 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06] hover:border-neutral-300 dark:hover:border-white/[0.12] hover:shadow-sm active:scale-[0.98] transition-all text-left group"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-white dark:bg-white/[0.07] shadow-sm border border-neutral-100 dark:border-white/[0.06] flex items-center justify-center flex-shrink-0 group-hover:border-blue-100 dark:group-hover:border-blue-500/20 group-hover:bg-blue-50 dark:group-hover:bg-blue-500/10 transition-all">
-                      <Icon className="w-[18px] h-[18px] text-neutral-500 dark:text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/85 leading-tight">{label}</p>
-                      <p className="text-[11.5px] text-neutral-400 dark:text-white/30 mt-0.5 leading-tight">{desc}</p>
-                    </div>
-                  </button>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-[560px]">
+                {SUGGESTIONS.map(({ icon: Icon, label, desc, prompt }) => {
+                  const accent = getSuggestionAccent(Icon);
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => { const id = Date.now().toString(); setSessions((p) => [{ id, title: prompt.slice(0, 40) }, ...p]); setActiveSession(id); sendMessage({ text: prompt }); }}
+                      className="flex items-center gap-3.5 p-4 rounded-2xl border border-neutral-200/70 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.025] hover:bg-white dark:hover:bg-white/[0.055] hover:border-neutral-200 dark:hover:border-white/[0.1] hover:shadow-md dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.25)] active:scale-[0.98] transition-all text-left group"
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${accent.iconBg}`}>
+                        <Icon className={`w-[18px] h-[18px] transition-colors ${accent.iconCls}`} />
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-neutral-800 dark:text-white/85 leading-tight">{label}</p>
+                        <p className="text-[12px] text-neutral-400 dark:text-white/30 mt-0.5 leading-tight">{desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -1804,11 +1820,11 @@ export default function Home() {
 
               {/* Typing indicator */}
               {isLoading && status === "submitted" && (
-                <div className="flex gap-4">
-                  <TataILogo className="w-8 h-8 flex-shrink-0" />
-                  <div className="flex items-center gap-1 pt-2">
+                <div className="flex gap-2.5 sm:gap-4">
+                  <TataILogo className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 mt-1" />
+                  <div className="flex items-center gap-[5px] bg-neutral-100 dark:bg-white/[0.06] rounded-2xl rounded-tl-sm px-4 py-3">
                     {[0, 1, 2].map((i) => (
-                      <span key={i} className="w-2 h-2 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-400 animate-bounce" style={{ animationDelay: `${i * 160}ms` }} />
                     ))}
                   </div>
                 </div>
@@ -1821,7 +1837,7 @@ export default function Home() {
         {/* ── Input bar ── */}
         <div className={`px-3 sm:px-4 pb-4 sm:pb-6 pt-2 ${messages.length === 0 ? "absolute bottom-0 left-0 right-0" : ""}`}>
           <div className="max-w-[760px] mx-auto">
-            <div className="bg-white dark:bg-[#2a2a2a] border border-neutral-200 dark:border-white/[0.1] rounded-2xl shadow-sm dark:shadow-none focus-within:border-blue-400/60 dark:focus-within:border-white/[0.2] focus-within:shadow-md transition-all duration-150">
+            <div className="bg-white dark:bg-[#2a2a2a] border border-neutral-200/80 dark:border-white/[0.09] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)] focus-within:border-blue-400/60 dark:focus-within:border-blue-500/30 focus-within:shadow-[0_2px_16px_rgba(59,130,246,0.1)] dark:focus-within:shadow-[0_2px_16px_rgba(59,130,246,0.07)] transition-all duration-150">
 
               {/* Attachment previews */}
               {attachments.length > 0 && (
