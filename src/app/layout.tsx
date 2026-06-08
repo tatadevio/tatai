@@ -21,21 +21,29 @@ const APP_TITLE = "tatAI — Your AI Assistant";
 const APP_DESC =
   "tatAI is a powerful AI assistant built by tatadev LLC. Write code, research topics, draft content, and brainstorm ideas — all with one smart AI.";
 const APP_KEYWORDS = [
-  "AI assistant",
-  "artificial intelligence",
-  "chatbot",
-  "AI chat",
-  "ChatGPT alternative",
   "tatAI",
-  "tatadev",
+  "tatai.cloud",
+  "AI assistant",
+  "free AI chat",
+  "ChatGPT alternative free",
+  "best AI assistant 2026",
+  "AI chatbot online",
+  "AI writing assistant",
+  "AI code assistant",
   "write code with AI",
   "AI for productivity",
-  "smart AI",
-  "AI brainstorm",
-  "AI writing assistant",
-  "free AI tool",
-  "GPT alternative",
-  "best AI assistant 2026",
+  "GPT-4 alternative",
+  "Claude alternative",
+  "free AI tool no login",
+  "AI brainstorming tool",
+  "AI content generator",
+  "smart AI assistant",
+  "AI research assistant",
+  "talk to AI online free",
+  "AI chat no subscription",
+  "artificial intelligence assistant",
+  "tatadev",
+  "tatadev LLC",
 ].join(", ");
 
 export const metadata: Metadata = {
@@ -106,8 +114,50 @@ export const metadata: Metadata = {
 
   manifest: "/manifest.webmanifest",
 
-  // Verification (add your codes once you verify in Google Search Console etc.)
-  // verification: { google: "YOUR_GOOGLE_SITE_VERIFICATION" },
+  verification: { google: "kZQUZ7qQecY0QW8lmwfN7K2cbPwMmajT0u_pPW5vjy4" },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${APP_URL}/#website`,
+      url: APP_URL,
+      name: APP_NAME,
+      description: APP_DESC,
+      publisher: { "@id": `${APP_URL}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${APP_URL}/?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@type": "Organization",
+      "@id": `${APP_URL}/#organization`,
+      name: "tatadev LLC",
+      url: APP_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${APP_URL}/icon-512.png`,
+        width: 512,
+        height: 512,
+      },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: APP_NAME,
+      url: APP_URL,
+      applicationCategory: "UtilitiesApplication",
+      operatingSystem: "Web, Android, iOS",
+      description: APP_DESC,
+      offers: [
+        { "@type": "Offer", price: "0", priceCurrency: "USD", name: "Free plan" },
+        { "@type": "Offer", price: "9.99", priceCurrency: "USD", name: "Pro plan" },
+      ],
+    },
+  ],
 };
 
 export const viewport: Viewport = {
@@ -126,10 +176,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        {/* Preconnect for speed */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://api.openai.com" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body className="h-full bg-white dark:bg-[#0a0a0a] text-neutral-900 dark:text-white transition-colors">
         <ThemeProvider>
